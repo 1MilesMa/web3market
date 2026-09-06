@@ -69,3 +69,11 @@ jobs:
         run: |
           npx hardhat verify --network sepolia 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119 \
             --constructor-args scripts/verify-args/timelock-args.js
+
+      # 构造参数已用链上部署交易 calldata 回校：initialOwner=0xe3C2...afCd8, initialSupply=1000000
+      - name: 验证 MyToken
+        continue-on-error: true
+        run: |
+          npx hardhat verify --network sepolia 0xcc9f3027899899c743593E98be543B75B7BA0A05 \
+            0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8 \
+            1000000
