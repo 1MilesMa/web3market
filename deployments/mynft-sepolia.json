@@ -13,5 +13,14 @@
   "txHash": "0x1890ac43500391cdc17d435680d493dc73fa06adb1bd51a943b89adf108a03db",
   "blockNumber": 11631013,
   "gasUsed": "2108841",
-  "deployedAt": "2026-09-04T03:57:55.029Z"
+  "deployedAt": "2026-09-04T03:57:55.029Z",
+  "owner": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+  "ownerTransferredAtBlock": 11647067,
+  "ownerTransferTx": "0xa89939aa319cb26df60e592c58bc8c5669ac84a133eddfca12f084f76da47e46",
+  "ownerNote": "2026-09-06 由部署者 EOA 经 Ownable2Step（提名→多签排队→公示300秒→执行）移交 MarketTimelock",
+  "governance": {
+    "timelock": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+    "multisigOwner": "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
+    "minDelaySeconds": 300
+  }
 }

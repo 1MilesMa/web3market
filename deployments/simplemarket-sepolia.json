@@ -3,7 +3,7 @@
   "address": "0x71450D767f2b83722b88164316d7308DB20A39c8",
   "network": "sepolia",
   "chainId": "11155111",
-  "owner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "owner": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
   "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
   "feeBps": 250,
   "deployedAt": "2026-09-04T03:58:20.202Z",
@@ -15,5 +15,7 @@
     "multisigOwner": "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
     "minDelaySeconds": 300,
     "note": "SimpleMarket 的 owner 已由部署者 EOA 移交 MarketTimelock；时间锁的 proposer/executor 为 MultiSigOwner 多签（3 owner / 阈值 2）。owner 字段保留部署时的历史值，实际权限以链上 owner() 为准。"
-  }
+  },
+  "ownerTransferredAtBlock": null,
+  "ownerNote": "部署时为部署者 EOA，后经 2/2 多签治理移交 MarketTimelock；链上以 owner() 为准"
 }
