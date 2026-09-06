@@ -1,0 +1,10 @@
+{
+  "contract": "SimpleMarket",
+  "address": "0xF7c46B53971D72f1a3E59627224bF6438059A1E9",
+  "network": "sepolia",
+  "chainId": "11155111",
+  "owner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "feeBps": 250,
+  "deployedAt": "2026-09-03T03:41:27.352Z"
+}

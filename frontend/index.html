@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SimpleMarket · 链上市场控制台</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --line:#2a3038;
+    --txt:#e6edf3; --dim:#8b949e; --acc:#2f81f7; --ok:#3fb950;
+    --warn:#d29922; --err:#f85149; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  a{color:var(--acc);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,.mono{font-family:var(--mono)}
+
+  header{position:sticky;top:0;z-index:10;background:var(--panel);
+         border-bottom:1px solid var(--line);padding:12px 20px;
+         display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{margin:0;font-size:16px;font-weight:600;letter-spacing:.3px}
+  header h1 span{color:var(--dim);font-weight:400;font-size:12px;margin-left:8px}
+  .spacer{flex:1}
+
+  button{background:var(--acc);color:#fff;border:0;border-radius:6px;
+         padding:7px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+  button:hover{filter:brightness(1.12)}
+  button:disabled{background:#30363d;color:#6e7681;cursor:not-allowed;filter:none}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+  button.ghost:hover{border-color:var(--acc);color:var(--acc);filter:none}
+  button.danger{background:var(--err)}
+  button.small{padding:4px 9px;font-size:12px}
+
+  main{max-width:1180px;margin:0 auto;padding:20px;
+       display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);
+        border-radius:10px;padding:16px;margin-bottom:0}
+  .card.full{grid-column:1/-1}
+  .card h2{margin:0 0 12px;font-size:14px;font-weight:600;
+           display:flex;align-items:center;gap:8px}
+  .card h2 .tag{font-size:11px;font-weight:400;color:var(--dim);
+                background:var(--panel2);padding:2px 7px;border-radius:4px}
+  .hint{color:var(--dim);font-size:12px;margin:0 0 10px}
+
+  .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+  label{font-size:12px;color:var(--dim);min-width:76px}
+  input,select,textarea{flex:1;min-width:110px;background:var(--panel2);
+    color:var(--txt);border:1px solid var(--line);border-radius:6px;
+    padding:6px 9px;font-size:13px;font-family:var(--mono)}
+  input:focus,textarea:focus{outline:none;border-color:var(--acc)}
+  textarea{width:100%;min-height:64px;resize:vertical;font-size:12px}
+
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;
+      font-size:13px;font-family:var(--mono)}
+  .kv div:nth-child(odd){color:var(--dim)}
+
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;
+        font-size:11px;font-family:var(--mono)}
+  .pill.on{background:rgba(63,185,80,.16);color:var(--ok)}
+  .pill.off{background:rgba(139,148,158,.16);color:var(--dim)}
+  .pill.warn{background:rgba(210,153,34,.16);color:var(--warn)}
+  .pill.err{background:rgba(248,81,73,.16);color:var(--err)}
+
+  #nftList{max-height:230px;overflow:auto;border:1px solid var(--line);
+           border-radius:6px;background:var(--panel2)}
+  .nft{padding:7px 10px;border-bottom:1px solid var(--line);
+       display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px}
+  .nft:last-child{border-bottom:0}
+  .nft:hover{background:#222836}
+  .nft.sel{background:rgba(47,129,247,.15);outline:1px solid var(--acc)}
+  .nft .id{font-family:var(--mono);color:var(--acc);min-width:44px}
+  .nft .uri{flex:1;overflow:hidden;text-overflow:ellipsis;
+            white-space:nowrap;color:var(--dim);font-size:12px}
+
+  #marketBoard{max-height:260px;overflow:auto;border:1px solid var(--line);
+              border-radius:6px;background:var(--panel2)}
+  .mrow{display:grid;grid-template-columns:64px 1fr 140px 190px;gap:8px;
+        align-items:center;padding:7px 10px;border-bottom:1px solid var(--line);
+        font-size:13px;font-family:var(--mono)}
+  .mrow:last-child{border-bottom:0}
+  .mrow:hover{background:#222836}
+  .mrow .id{color:var(--acc);min-width:44px}
+  .mrow .op{display:flex;gap:6px;justify-content:flex-end}
+  @media(max-width:620px){
+    .mrow{grid-template-columns:60px 1fr}
+    .mrow .op{grid-column:1/-1;justify-content:flex-start}
+  }
+
+  #log{height:230px;overflow:auto;background:#0b0e13;border:1px solid var(--line);
+       border-radius:6px;padding:10px;font-family:var(--mono);font-size:12px}
+  .lg{margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #1a1f27;
+      white-space:pre-wrap;word-break:break-all}
+  .lg:last-child{border-bottom:0}
+  .lg .t{color:#6e7681;margin-right:6px}
+  .lg.i{color:var(--txt)} .lg.s{color:var(--ok)}
+  .lg.w{color:var(--warn)} .lg.e{color:var(--err)}
+
+  details{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+  summary{cursor:pointer;color:var(--dim);font-size:12px}
+  summary:hover{color:var(--acc)}
+  .quote{font-size:12px;color:var(--dim);font-family:var(--mono);
+         background:var(--panel2);padding:8px;border-radius:6px;margin-top:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SimpleMarket<span>链上市场控制台 · Sepolia</span></h1>
+  <div class="spacer"></div>
+  <span id="netPill" class="pill off">未连接</span>
+  <span id="acctPill" class="mono" style="font-size:12px;color:var(--dim)"></span>
+  <button id="btnConnect">连接钱包</button>
+</header>
+
+<main>
+
+  <section class="card">
+    <h2>合约状态 <span class="tag">只读</span></h2>
+    <div class="kv" id="stateBox"><div>加载中…</div><div></div></div>
+    <details>
+      <summary>合约地址与区块浏览器</summary>
+      <div class="kv mono" id="addrBox" style="margin-top:8px"></div>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>我的 NFT <span class="tag">ERC721Enumerable</span></h2>
+    <div class="row">
+      <button class="small ghost" id="btnRefreshNft">刷新</button>
+      <button class="small" id="btnApprove">授权市场</button>
+      <button class="small ghost" id="btnMint">公开铸造一枚</button>
+      <span id="approvePill" class="pill off">未授权</span>
+    </div>
+    <div id="nftList"><div class="nft" style="color:var(--dim)">连接钱包后显示</div></div>
+  </section>
+
+  <section class="card">
+    <h2>挂单 / 撤单 / 改价 <span class="tag">卖家 · 需授权</span></h2>
+    <p class="hint">挂单只登记价格，NFT 仍留在你钱包；成交时合约凭授权代转移。</p>
+    <div class="row"><label>NFT 合约</label><input id="lstNft" /></div>
+    <div class="row"><label>TokenId</label><input id="lstToken" placeholder="点击上方列表可选中" /></div>
+    <div class="row"><label>价格(ETH)</label><input id="lstPrice" placeholder="0.001" /></div>
+    <div class="row">
+      <button id="btnList">挂单</button>
+      <button class="ghost" id="btnCancel">撤单</button>
+      <button class="ghost" id="btnUpdatePrice">改价</button>
+      <button class="ghost small" id="btnQueryListing">查询挂单</button>
+    </div>
+    <div class="quote" id="listingBox">尚未查询</div>
+  </section>
+
+  <section class="card">
+    <h2>购买 <span class="tag">买家 · 自动预估分账</span></h2>
+    <p class="hint">下单前先按 quoteWithRoyalty 算出平台费与版税，多付的部分会原额退回。</p>
+    <div class="row"><label>NFT 合约</label><input id="buyNft" /></div>
+    <div class="row"><label>TokenId</label><input id="buyToken" /></div>
+    <div class="row"><label>价格(ETH)</label><input id="buyPrice" placeholder="0.001" /></div>
+    <div class="row">
+      <button id="btnQuote">预估分账</button>
+      <button id="btnBuy">买入</button>
+    </div>
+    <div class="quote" id="quoteBox">尚未预估</div>
+  </section>
+
+  <section class="card full">
+    <h2>市场在售一览 <span class="tag">只读 · 逐个 getListing</span></h2>
+    <p class="hint">挂单存在 mapping 里，合约无法把它枚举出来，所以这里遍历 tokenId 0 … nextTokenId-1 逐个查 getListing，只留下在售的。这是「给合约补一个列表页」最直接的做法。</p>
+    <div class="row">
+      <button class="small" id="btnRefreshMarket">刷新在售</button>
+      <span id="marketPill" class="pill off">未刷新</span>
+      <span class="hint" style="margin:0">每次刷新会发 nextTokenId 次只读请求（不上链、不花 gas）</span>
+    </div>
+    <div id="marketBoard"><div class="nft" style="color:var(--dim)">连接钱包后点「刷新在售」</div></div>
+    <details>
+      <summary>规模变大之后怎么办</summary>
+      <p class="hint" style="margin-top:8px">
+        tokenId 上千之后逐个查询就不现实了。届时的标准做法是监听
+        Listed / PriceUpdated / Canceled / Sold 事件，在链下（数据库或前端内存）维护一份索引，
+        再用 getListing 做交叉校验。项目里的 <code>scripts/market-board.js</code>
+        就是这个思路的完整实现，可以直接 <code>npx hardhat run</code> 跑。
+      </p>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>EIP-712 签名挂单 <span class="tag">卖家 · 零 gas</span></h2>
+    <p class="hint">离线签名即可挂牌，全程不上链、不花 gas；把生成的 JSON 发给买家去成交。</p>
+    <div class="row"><label>TokenId</label><input id="sigToken" /></div>
+    <div class="row"><label>价格(ETH)</label><input id="sigPrice" placeholder="0.001" /></div>
+    <div class="row"><label>有效期(分)</label><input id="sigMins" value="60" /></div>
+    <div class="row"><button id="btnSign">生成签名</button>
+      <button class="ghost small" id="btnCopySig">复制</button>
+      <button class="ghost small" id="btnBumpNonce">作废旧签名(+nonce)</button></div>
+    <textarea id="sigOut" placeholder="签名 JSON 会出现在这里"></textarea>
+  </section>
+
+  <section class="card">
+    <h2>用签名成交 <span class="tag">买家 · 付 gas</span></h2>
+    <p class="hint">粘贴卖家给你的签名 JSON，按其中的价格发起成交。</p>
+    <textarea id="sigIn" placeholder='粘贴 {"intent":{...},"seller":"0x...","signature":"0x..."}'></textarea>
+    <div class="row" style="margin-top:8px">
+      <button id="btnFulfill">签名成交</button>
+      <button class="ghost small" id="btnParseSig">解析并预估</button>
+    </div>
+    <div class="quote" id="fulfillBox">尚未解析</div>
+  </section>
+
+  <section class="card">
+    <h2>出价 <span class="tag">买家 · ETH 进合约代管</span></h2>
+    <p class="hint">出价按出价人分桶，同一枚 NFT 可多人同时出价；重复出价是累加（加价）。</p>
+    <div class="row"><label>NFT 合约</label><input id="offNft" /></div>
+    <div class="row"><label>TokenId</label><input id="offToken" /></div>
+    <div class="row"><label>出价(ETH)</label><input id="offAmount" placeholder="0.001" /></div>
+    <div class="row"><label>出价人</label><input id="offBidder" placeholder="默认自己" /></div>
+    <div class="row">
+      <button id="btnOffer">出价</button>
+      <button class="ghost" id="btnWithdrawOffer">取回出价</button>
+      <button class="ghost small" id="btnQueryOffer">查询出价</button>
+    </div>
+    <div class="quote" id="offerBox">尚未查询</div>
+  </section>
+
+  <section class="card">
+    <h2>处置出价 <span class="tag">持有者</span></h2>
+    <p class="hint">拒绝时若对方拒收 ETH，退款会进待领池（不 revert），保证你永远能拒绝。</p>
+    <div class="row"><label>NFT 合约</label><input id="actNft" /></div>
+    <div class="row"><label>TokenId</label><input id="actToken" /></div>
+    <div class="row"><label>出价人</label><input id="actBidder" /></div>
+    <div class="row">
+      <button id="btnAcceptOffer">接受</button>
+      <button class="danger" id="btnRejectOffer">拒绝</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>资金 <span class="tag">Pull Payment</span></h2>
+    <p class="hint">合约从不主动转账，所有款项记账后由收款人自取。</p>
+    <div class="kv" id="fundBox"><div>加载中…</div><div></div></div>
+    <div class="row" style="margin-top:10px">
+      <button id="btnWithdrawPending">领回待领款</button>
+      <button class="ghost" id="btnWithdrawRoyalty">领回版税(市场代收)</button>
+      <button class="ghost" id="btnWithdrawFees">提取平台费(owner)</button>
+    </div>
+  </section>
+
+  <section class="card full">
+    <h2>日志 <span class="tag">每笔交易哈希与状态</span></h2>
+    <div id="log"></div>
+  </section>
+
+</main>
+
+<script src="vendor/ethers.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

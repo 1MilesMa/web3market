@@ -1,0 +1,131 @@
+{
+  "contract": "0xcc9f3027899899c743593E98be543B75B7BA0A05",
+  "deployTxHash": "0xc867195d895c073a24f34dbf2a0bc0a19a6cb3664cd4cfe2c28013f0fb23fad4",
+  "owner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "user2": "0xb9a429a3b101015DdeE57569360b73c36E646a32",
+  "fundEthTxHash": null,
+  "tokenInfo": {
+    "name": "MyToken",
+    "symbol": "MTK",
+    "decimals": 18,
+    "totalSupply": "1000000.0 MTK"
+  },
+  "transferTx": "0xa244ff4dc9e937868487252c248873dfb63254be26c3bff31a9a85d473944f8f",
+  "approveTx": "0x0dd66ff41d9bb9f6f001e36204336663aab1abe65937ff707c37552e05d6ae07",
+  "transferFromTx": "0xcab613840fe4799b2cd0ca4ceee73195c0c68dad1e4cd39baac895774b93e1b6",
+  "mintTx": "0x4313d49e9ec990f258795740b335c41fd3a8de56ef834a744848d059fbd4156f",
+  "burnTx": "0x898b33c6c15d5315a337faa00a11cea8b93d4f4c4fd319b1b69b47e15431e8ab",
+  "checks": [
+    {
+      "name": "user2 具备 gas 费（>= 0.002 ETH）",
+      "ok": true,
+      "detail": "0.009876603898763944 -> 0.009876603898763944 ETH"
+    },
+    {
+      "name": "name 正确",
+      "ok": true,
+      "detail": "MyToken"
+    },
+    {
+      "name": "symbol 正确",
+      "ok": true,
+      "detail": "MTK"
+    },
+    {
+      "name": "decimals 为 18",
+      "ok": true,
+      "detail": "18"
+    },
+    {
+      "name": "totalSupply = 1000000.0",
+      "ok": true,
+      "detail": "1000000.0"
+    },
+    {
+      "name": "owner 为部署账户",
+      "ok": true,
+      "detail": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8"
+    },
+    {
+      "name": "owner 余额减少 1000",
+      "ok": true,
+      "detail": "1000000.0 -> 999000.0"
+    },
+    {
+      "name": "user2 余额增加 1000",
+      "ok": true,
+      "detail": "0.0 -> 1000.0"
+    },
+    {
+      "name": "transfer 未改变 totalSupply",
+      "ok": true,
+      "detail": "1000000.0"
+    },
+    {
+      "name": "approve 后 allowance = 500",
+      "ok": true,
+      "detail": "500.0"
+    },
+    {
+      "name": "transferFrom 由 user2 发起成功",
+      "ok": true,
+      "detail": "receipt status = 1"
+    },
+    {
+      "name": "allowance 扣减至 200",
+      "ok": true,
+      "detail": "200.0"
+    },
+    {
+      "name": "收款方 R 收到 300",
+      "ok": true,
+      "detail": "300.0"
+    },
+    {
+      "name": "超额 transferFrom 被拒绝（发生 revert）",
+      "ok": true,
+      "detail": "execution reverted"
+    },
+    {
+      "name": "非 owner 调用 mint 被拒绝（发生 revert）",
+      "ok": true,
+      "detail": "execution reverted"
+    },
+    {
+      "name": "拒绝原因来自 Ownable 权限校验",
+      "ok": true,
+      "detail": "OwnableUnauthorizedAccount(0xb9a429a3b101015DdeE57569360b73c36E646a32)"
+    },
+    {
+      "name": "真实交易同样被网络拒绝/回滚",
+      "ok": true,
+      "detail": "RPC 直接拒绝广播: execution reverted"
+    },
+    {
+      "name": "拒绝后 totalSupply 未变化",
+      "ok": true,
+      "detail": "1000000.0"
+    },
+    {
+      "name": "owner mint 成功且 user2 余额增加 5000",
+      "ok": true,
+      "detail": "1000.0 -> 6000.0 (+5000.0)"
+    },
+    {
+      "name": "mint 使 totalSupply 增加 5000",
+      "ok": true,
+      "detail": "1005000.0"
+    },
+    {
+      "name": "owner burn 成功且余额减少",
+      "ok": true,
+      "detail": "6000.0 -> 5000.0"
+    },
+    {
+      "name": "burn 使 totalSupply 减少 1000",
+      "ok": true,
+      "detail": "1004000.0"
+    }
+  ],
+  "verifiedAt": "2026-09-01T15:41:42.503Z"
+}

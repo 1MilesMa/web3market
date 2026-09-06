@@ -1,0 +1,26 @@
+{
+  "name": "MyNFT #1",
+  "description": "我亲手铸造的第一枚 NFT —— 跟着 ERC721 实操手册跑出来的",
+  "image": "ipfs://bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi/1.png",
+  "external_url": "https://sepolia.etherscan.io/",
+  "attributes": [
+    {
+      "trait_type": "Generation",
+      "value": "Genesis"
+    },
+    {
+      "display_type": "number",
+      "trait_type": "Level",
+      "value": 1
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    },
+    {
+      "display_type": "date",
+      "trait_type": "MintedAt",
+      "value": 1756800000
+    }
+  ]
+}

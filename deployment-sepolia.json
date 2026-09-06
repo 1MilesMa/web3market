@@ -1,0 +1,13 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "contract": "HelloWeb3",
+  "address": "0x07f6736520685181c22bd0B58714C7a30B92bb3a",
+  "txHash": "0xaca0b32b50192473acf7546e3828bcaef0227ab7b2e08344484c13e6633f28ed",
+  "blockNumber": 11613406,
+  "gasUsed": "670426",
+  "gasPriceWei": "1053448969",
+  "deployCostEth": "0.000706259578490794",
+  "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "deployedAt": "2026-09-01T15:10:42.372Z"
+}

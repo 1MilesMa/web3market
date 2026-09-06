@@ -1,0 +1,1092 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+
+/**
+ * @title SimpleMarket —— 一个最简 NFT 市场（挂单 / 购买 / 撤单 / 手续费 / 版税 / 提现）
+ *
+ * ============================================================================
+ * 一、这个合约在做什么
+ * ============================================================================
+ *
+ * 它解决一个撮合问题：卖家想把某枚 NFT 卖 X ETH，买家愿意付，双方互不信任。
+ * 市场合约充当可信中间人，保证「付钱」和「交货」要么同时发生，要么都不发生。
+ *
+ * 注意它【不持有】NFT 和 ETH（手续费除外）：
+ *   · NFT 成交时才从卖家直接转给买家，市场只是被授权代为操作
+ *   · ETH 也是从买家直接打到卖家，市场只是过一手计算
+ * 这叫【授权式（approval-based）】，是 OpenSea Seaport、Blur 等主流市场采用的方式。
+ *
+ * 另一种做法是【托管式（escrow）】：挂单时把 NFT 转入市场合约保管。
+ * 为什么不这么做？
+ *   1. 资产集中：合约里堆着大量 NFT，一旦合约出事就是系统性损失
+ *   2. 浪费 gas：挂单一次转账、撤单又一次转账
+ *   3. 挂单期间 NFT 不在自己手上，卖家的其他操作（如抵押）会受影响
+ * 授权式只在成交瞬间动一次 NFT，gas 和风险都更低。
+ *
+ * ============================================================================
+ * 二、挂单的本质 = 一次 approve
+ * ============================================================================
+ *
+ * 卖家调用 list(nft, tokenId, price) 之前，必须先对市场合约授权：
+ *
+ *   nft.approve(marketAddress, tokenId)              —— 单枚授权（推荐）
+ *   或 nft.setApprovalForAll(marketAddress, true)    —— 全量授权（市场常用，风险高）
+ *
+ * 这就是你上一轮亲手练过的东西在市场里的真实用途。
+ * 顺带复习风险：市场页面让你签的 setApprovalForAll，一旦签了，
+ * 该市场合约（或钓鱼合约）随时能转走你该系列的全部 NFT，且授权不会自动失效。
+ * 所以 list() 里我们硬性校验授权状态，没授权直接拒绝挂单。
+ *
+ * ============================================================================
+ * 三、本合约涉及的核心安全考点（写市场合约最容易出事的地方）
+ * ============================================================================
+ *
+ * 1) 重入攻击（Reentrancy）—— 本合约用两道防线
+ *    危险写法：先给卖家转 ETH，再转 NFT。
+ *    如果卖家是恶意合约，它收到 ETH 时会在 fallback 里回调 buy()，
+ *    此时挂单状态还没更新，它会再买一次……直到把钱掏空。
+ *
+ *    防线 A：Checks-Effects-Interactions（检查-生效-交互）
+ *      先把挂单标记失效、先累计手续费（改状态），
+ *      再做所有外部调用（转 NFT、转 ETH）。
+ *      这样重入进来时状态已经是「已售出」，第二次 buy 在第一行检查就失败。
+ *
+ *    防线 B：ReentrancyGuard 的 nonReentrant 修饰符
+ *      互斥锁，同一笔交易内不允许嵌套进入。
+ *
+ *    两道都用 —— 这是纵深防御，安全领域不信任单一机制。
+ *
+ * 2) Pull Payment（拉取式付款）而不是 Push
+ *    平台手续费不直接转给 owner，而是累加到 accumulatedFees，
+ *    由 owner 主动调用 withdrawFees 提取。
+ *    原因：如果 owner 是某个合约且它拒绝收款（或它的 fallback 很耗 gas），
+ *    直接转账会导致【所有人的交易都失败】—— 一个人拖垮整个市场。
+ *    这是经典的「拒绝服务」陷阱。
+ *
+ * 3) 陈旧挂单（Stale Listing）
+ *    卖家挂单后，可能把 NFT 转走了，也可能撤销了对市场的授权。
+ *    此时挂单记录还在，但已经无法成交。
+ *    所以 buy() 要重新校验当前持有者是否仍是挂单时的卖家。
+ *
+ * 4) 费用计算用基点（basis points）
+ *    feeBps：10000 = 100%，250 = 2.5%。整数运算，避免浮点。
+ *    并设 10% 的硬上限，防止 owner 手滑（或作恶）把手续费设成 100%。
+ *
+ * 5) 多余的 ETH 要退还
+ *    买家可能多付（前端估算偏差、或同时有多人抢同一单）。
+ *    多付的部分必须退回去，不能默默吞掉。
+ *
+ * 6) 版税（EIP-2981）的三条铁律 —— 本轮新增，见下一节详述
+ *    a. 用 ERC165 做能力检测，不支持就跳过，绝不让老 NFT 卖不掉
+ *    b. 版税与手续费一样走 Pull Payment，绝不在 buy() 里直接 push 给创作者
+ *    c. 平台费 + 版税 + 卖家实得 三者之和【恒等于】成交价，
+ *       整数除法产生的 1~2 wei 余数明确归卖家，合约里不留取不出的钱
+ *
+ * ============================================================================
+ * 三点五、版税（EIP-2981）在市场侧的实现要点
+ * ============================================================================
+ *
+ * 一笔成交价 price 的完整去向：
+ *
+ *        price
+ *          ├── 平台手续费 fee      = price * feeBps / 10000       → accumulatedFees（owner 提）
+ *          ├── 创作者版税 royalty  = price * royaltyBps / 10000   → pendingRoyalties（创作者提）
+ *          └── 卖家实得 proceeds   = price - fee - royalty        → 立刻打给卖家
+ *
+ * 四个必须做对的细节：
+ *
+ *   1) 顺序：先算 fee，再算 royalty，剩下的全是卖家的。
+ *      这样 royalty 再大也不会让卖家那一份算成负数（下溢 panic 0x11）。
+ *
+ *   2) 用 ERC165 检测，而不是无脑调用。
+ *      if (IERC165(nft).supportsInterface(0x2a55205a)) { (receiver, amount) = royaltyInfo(...) }
+ *      早期 NFT（CryptoPunks、2021 年前的合集）没有 royaltyInfo，
+ *      直接调用会 revert，导致这些 NFT 在本市场完全无法成交。
+ *      检测失败 → royalty = 0，交易照常进行，这叫【优雅降级】。
+ *
+ *   3) Pull Payment 而非 push。
+ *      若在 buy() 里直接把版税转给 receiver：
+ *        · receiver 是拒收 ETH 的合约 → 整笔成交 revert（DoS，卖家被连坐）
+ *        · receiver 的 fallback 很耗 gas → 买家 gas 被吃光
+ *        · receiver 在 fallback 里做手脚 → 多一个重入面
+ *      所以版税只累加到 pendingRoyalties[receiver]，由 receiver 自己来 withdrawRoyalties()。
+ *      它拒收，只影响它自己提现，不影响市场成交。
+ *
+ *   4) 恶意 NFT 合约的防御。
+ *      royaltyInfo 是 NFT 合约自己实现的，它可以返回：
+ *        · 一个黑洞地址（钱取不出来）→ 我们拦不住，也不该拦，这是创作者自己设的
+ *        · 一个超过成交价的金额（10000 bps = 100%，甚至写死返回 type(uint256).max）
+ *          → 不处理的话 price - fee - royalty 会下溢 panic，该 NFT 永久无法成交（DoS）
+ *      我们的处理：把版税【钳制】在 price - fee 以内，钱全给创作者、卖家拿 0，
+ *      至少保证交易能进行、且三方之和仍等于 price。
+ * ============================================================================
+ * 四、本合约 simplification（为教学做的简化，真实市场要复杂得多）
+ * ============================================================================
+ *   · 只支持 ETH 计价，不支持 ERC20（如 WETH / USDC）
+ *   · 同一枚 NFT 同时只能有一个挂单（但可以被多个买家同时出价）
+ *   · 出价不设过期时间（真实市场用 EIP-712 签名 + 链下订单簿来做有效期）
+ *   · 没有签名挂单（Seaport 用 EIP-712 签名实现零 gas 挂单）
+ *   · 手续费 + 版税都是【平台自愿】的：本合约选择尊重 EIP-2981，
+ *     但链上没有强制力（Blur 就曾以"可选版税"抢市场），这是商业选择不是技术问题
+ *
+ * ============================================================================
+ * 五、出价（Offer）功能的设计取舍 —— 本轮新增
+ * ============================================================================
+ *
+ * 挂单是「卖家定价、买家接受」；出价是「买家定价、卖家接受」。
+ * 两者共用同一条成交路径（_settleSale），分账规则（平台费 + 版税 + 卖家实得）
+ * 因此【只有一套实现】，不存在两套算法跑出不同结果的风险。
+ *
+ * 六个关键设计决策：
+ *
+ *   1) 出价并存，不互相挤掉
+ *      _offers[nft][tokenId][bidder] = {amount, targetOwner}
+ *      出价按「买家」分桶，而不是按 NFT 只存一个"最高价"。
+ *      好处：买家之间零干扰 —— 若只保留最高价，A 出价被 B 超过时就要给 A 退款，
+ *      退款即一次 push 调用，恶意买家拒收就能把整个出价流程卡死（DoS）。
+ *
+ *   2) ETH 由合约代管（escrow）
+ *      出价时 msg.value 真的进合约，这是出价与"签名出价"的本质区别：
+ *      签名出价可以随时反悔（买家不履约），代管的 ETH 则是有约束力的承诺。
+ *      代价是合约持有资金，所以必须严格保证【任何人的钱都能被取回】。
+ *
+ *   3) 同一买家重复出价 = 累加，而不是"退回旧的、记新的"
+ *      退回旧出价同样意味着一次 push；累加则永远只是记账，与他人彻底解耦，
+ *      取回时一次性全额退回。想"改价"就先 withdrawOffer 再重新 makeOffer。
+ *
+ *   4) 拒绝出价失败时转待领池（pendingWithdrawals），绝不 revert
+ *      若 rejectOffer 因为买家拒收 ETH 而整体 revert，那么任何人只要对一个 NFT
+ *      出价并拒收，持有者就永远无法拒绝任何出价 —— 典型的 DoS。
+ *      所以：退回失败 → 记入 pendingWithdrawals，等买家自己来 withdrawPendingFunds()。
+ *
+ *   5) 成交后【不】批量清退其他出价者
+ *      acceptOffer 只清掉被接受的那一笔，其余买家各自 withdrawOffer。
+ *      原因同上：一次循环退款里只要有一个拒收者，整笔成交就会被卡死。
+ *      宁可让买家多调一次 withdrawOffer，也不能把卖家的成交权交到别人手上。
+ *
+ *   6) NFT 易主后旧出价自动失效
+ *      出价记录里存了出价那一刻的持有者 targetOwner。
+ *      acceptOffer 要求 msg.sender 既是【当前持有者】，又是【出价时的持有者】：
+ *        · 旧持有者来接受 → 他已经不是持有者 → NotTokenOwner
+ *        · 新持有者来接受 → 他不是出价对象   → StaleOffer
+ *      这样买家不会因为 NFT 换手，而被一个"当初没想卖给他的人"强制成交。
+ *      出价失效后买家随时 withdrawOffer 取回，钱不会被锁。
+ *      （注：部分真实市场选择让出价跟随 NFT 存活、由新持有者决定是否接受，
+ *        两种做法都有；本合约选对买家更友好的"易主即失效"。）
+ * ============================================================================
+ */
+contract SimpleMarket is Ownable, ReentrancyGuard, EIP712 {
+    // ========================================================================
+    // 数据结构
+    // ========================================================================
+
+    /// @notice 一条挂单记录
+    /// @param seller 卖家地址
+    /// @param price  售价（wei）
+    /// @param active 是否有效。撤单/成交后置 false，而不是删除记录
+    ///               （保留历史记录便于链下索引，也能省 gas：删除 mapping 的退款收益有限）
+    struct Listing {
+        address seller;
+        uint256 price;
+        bool active;
+    }
+
+    // ========================================================================
+    // 状态变量
+    // ========================================================================
+
+    /// @notice 平台手续费（基点）：10000 = 100%，250 = 2.5%
+    uint256 public feeBps;
+
+    /// @notice 累计待提取的手续费（单位 wei）
+    uint256 public accumulatedFees;
+
+    /// @notice 待提取的版税：版税接收者 => 累计金额（wei）
+    ///         与手续费一样是 Pull Payment 设计，见 _splitProceeds 的说明
+    mapping(address => uint256) public pendingRoyalties;
+
+    /// @notice 手续费硬上限 10%，防止 owner 设成离谱的值
+    uint256 public constant MAX_FEE_BPS = 1000;
+
+    /// @notice 基点分母
+    uint256 private constant BPS_DENOMINATOR = 10_000;
+
+    /// @notice EIP-2981 的 interfaceId（0x2a55205a）
+    ///         硬编码常量只是为了省一次外部调用；语义上等价于
+    ///         type(IERC2981).interfaceId，测试里会断言两者一致
+    bytes4 private constant INTERFACE_ID_ERC2981 = 0x2a55205a;
+
+    /// @notice 一条出价记录
+    /// @param amount      该买家当前托管在市场里的出价总额（wei）。0 表示无有效出价
+    /// @param targetOwner 出价那一刻该 NFT 的持有者。
+    ///                    用于实现"NFT 易主后旧出价自动失效"：
+    ///                    acceptOffer 要求接受者既是当前持有者、又是 targetOwner
+    struct Offer {
+        uint256 amount;
+        address targetOwner;
+    }
+
+    /// @notice 出价表：NFT 合约地址 => tokenId => 出价人 => 出价
+    ///         按出价人分桶，所以同一枚 NFT 可以被任意多个人同时出价，互不挤掉
+    mapping(address => mapping(uint256 => mapping(address => Offer))) private _offers;
+
+    /// @notice 待领池：因原路退回失败而暂存、等账户自己来取的 ETH
+    ///         场景：rejectOffer 时买家是拒收 ETH 的合约，退回失败又不能 revert，
+    ///               于是把钱记在这里，由买家主动 withdrawPendingFunds() 领走
+    ///         （与 pendingRoyalties 同属 Pull Payment，只是成因不同）
+    mapping(address => uint256) public pendingWithdrawals;
+
+    /// @notice 挂单表：NFT 合约地址 => tokenId => 挂单
+    ///         这样设计使得一个市场可以服务任意多个 NFT 合集
+    mapping(address => mapping(uint256 => Listing)) private _listings;
+
+    // ========================================================================
+    // EIP-712 链下签名挂单（ListingIntent）
+    //
+    // 传统 list() 要求卖家先发一笔链上交易写挂单，改价、下架也各要一笔。
+    // 改成链下签名后：卖家只在链下对一条「我愿意以 X 价卖出」的意图签名，
+    // 买家（或任意撮合方）拿着签名来 fulfillListing 成交，**卖家全程零 gas**。
+    // 想改价 / 下架？在链下数据库里撤掉签名即可（零成本）；
+    // 需要紧急作废全部签名时，再花一笔交易 incrementNonce() 让旧签名集体失配。
+    // 这是 OpenSea Seaport、Blur 等主流市场的核心机制。
+    // ========================================================================
+
+    /// @notice 一条链下挂单意图（卖家在链下对它的 EIP-712 摘要签名）
+    /// @param nftContract 要卖的 NFT 合约
+    /// @param tokenId     要卖的 NFT 编号
+    /// @param price       售价（wei）
+    /// @param deadline    签名过期时间（Unix 秒），防止签名被无限期利用
+    /// @param nonce       卖家的挂单 nonce，必须等于链上 listingNonces[seller]；
+    ///                    成交后自动 +1，因此同一条签名**只能成交一次**（防重放）
+    struct ListingIntent {
+        address nftContract;
+        uint256 tokenId;
+        uint256 price;
+        uint256 deadline;
+        uint256 nonce;
+    }
+
+    /// @notice ListingIntent 的 EIP-712 typeHash。
+    ///         测试里会用 keccak256 重算一遍断言相等 —— 结构体字段一改动，
+    ///         这个常量不同步更新就会导致所有签名验证失效，属于硬约束
+    bytes32 public constant LISTING_INTENT_TYPEHASH =
+        keccak256(
+            "ListingIntent(address nftContract,uint256 tokenId,uint256 price,uint256 deadline,uint256 nonce)"
+        );
+
+    /// @notice 每个卖家的挂单 nonce：成交一次 +1，卖家也可主动 +1 批量作废旧签名
+    mapping(address => uint256) public listingNonces;
+
+    // ========================================================================
+    // 事件（前端与市场活动流全部依赖它们）
+    // ========================================================================
+
+    event Listed(address indexed nftContract, uint256 indexed tokenId, address indexed seller, uint256 price);
+    event PriceUpdated(address indexed nftContract, uint256 indexed tokenId, uint256 oldPrice, uint256 newPrice);
+    event Canceled(address indexed nftContract, uint256 indexed tokenId, address indexed seller);
+    event Sold(
+        address indexed nftContract,
+        uint256 indexed tokenId,
+        address indexed seller,
+        address buyer,
+        uint256 price,
+        uint256 fee
+    );
+    event FeeBpsUpdated(uint256 oldFeeBps, uint256 newFeeBps);
+    event FeesWithdrawn(address indexed to, uint256 amount);
+
+    /// @notice 一笔成交产生了版税。注意：这是【入账】事件，不是"已打款"——
+    ///         钱此刻仍在市场合约里，等 receiver 调 withdrawRoyalties() 才真正转走
+    event RoyaltyPaid(
+        address indexed nftContract,
+        uint256 indexed tokenId,
+        address indexed receiver,
+        uint256 amount
+    );
+
+    /// @notice 版税接收者成功提走版税
+    event RoyaltyWithdrawn(address indexed receiver, uint256 amount);
+
+    /// @notice 有人对某枚 NFT 出价（或加价）。added 是本次追加额，total 是该买家累计托管额
+    event OfferMade(
+        address indexed nftContract,
+        uint256 indexed tokenId,
+        address indexed bidder,
+        uint256 added,
+        uint256 total
+    );
+
+    /// @notice 买家主动取回自己的出价
+    event OfferWithdrawn(
+        address indexed nftContract,
+        uint256 indexed tokenId,
+        address indexed bidder,
+        uint256 amount
+    );
+
+    /// @notice 持有者拒绝了一笔出价。refunded=false 表示原路退回失败、钱已转入待领池
+    event OfferRejected(
+        address indexed nftContract,
+        uint256 indexed tokenId,
+        address indexed bidder,
+        uint256 amount,
+        bool refunded
+    );
+
+    /// @notice 持有者接受了一笔出价（紧随其后还会发出 Sold 事件，走的是同一条成交路径）
+    event OfferAccepted(
+        address indexed nftContract,
+        uint256 indexed tokenId,
+        address indexed seller,
+        address bidder,
+        uint256 price,
+        uint256 fee
+    );
+
+    /// @notice 一笔退款原路退回失败，已转入待领池等收款人自取
+    event RefundPending(address indexed account, uint256 amount);
+
+    /// @notice 有人从待领池取走了 ETH
+    event PendingWithdrawn(address indexed account, uint256 amount);
+
+    /// @notice 卖家主动作废旧签名：nonce 跳跃后，它此前签的所有 ListingIntent 全部失配
+    event NonceIncremented(address indexed seller, uint256 oldNonce, uint256 newNonce);
+
+    // ========================================================================
+    // 自定义错误
+    // ========================================================================
+
+    error PriceMustBeGreaterThanZero();
+    error NotTokenOwner();
+    error MarketNotApproved();
+    error AlreadyListed();
+    error NotListed();
+    error NotSeller();
+    error InsufficientPayment(uint256 sent, uint256 required);
+    error StaleListing(address currentOwner, address listingSeller);
+    error FeeTooHigh(uint256 provided, uint256 max);
+    error EthTransferFailed();
+    error NothingToWithdraw();
+    error ZeroAddress();
+    error RoyaltyTransferFailed();
+
+    /// @notice 出价金额为 0（makeOffer 必须带 value > 0）
+    error OfferAmountZero();
+
+    /// @notice 该买家在这枚 NFT 上没有有效出价（撤回 / 接受 / 拒绝时）
+    error NoActiveOffer();
+
+    /// @notice 出价已因 NFT 易主而失效：currentOwner 不是出价时的对象 offerOwner
+    error StaleOffer(address currentOwner, address offerOwner);
+
+    // ---------- EIP-712 链下签名挂单 ----------
+
+    /// @notice 签名已过期（当前区块时间已超过 intent.deadline）
+    error SignatureExpired(uint256 deadline, uint256 currentTime);
+
+    /// @notice nonce 不匹配：签名可能被重放，或 seller 已主动作废过
+    error InvalidNonce(uint256 expected, uint256 provided);
+
+    /// @notice 签名无效：恢复出的签名者不是声称的 seller，或数据被篡改
+    error InvalidSignature();
+
+    /// @notice 链下挂单意图的售价为 0
+    error IntentPriceZero();
+
+    // ========================================================================
+    // 构造函数
+    // ========================================================================
+
+    /**
+     * @param initialOwner 市场 owner（可提取手续费、可调费率）
+     * @param feeBps_      初始手续费（基点）
+     */
+    constructor(
+        address initialOwner,
+        uint256 feeBps_
+    ) Ownable(initialOwner) EIP712("SimpleMarket", "1") {
+        _setFeeBps(feeBps_);
+    }
+
+    // ========================================================================
+    // 卖家侧：挂单 / 改价 / 撤单
+    // ========================================================================
+
+    /**
+     * @notice 挂单出售一枚 NFT
+     * @param nftContract NFT 合约地址
+     * @param tokenId     要卖的 NFT 编号
+     * @param price       售价（wei）
+     *
+     * 前置条件（三个都要满足，否则 revert）：
+     *   1. msg.sender 是当前持有者
+     *   2. 本市场合约已被授权操作这枚 NFT（approve 或 setApprovalForAll）
+     *   3. 价格 > 0
+     *
+     * 注意：本函数【不转移】NFT，它只在链上记一条「我愿意以这个价卖」的记录。
+     *      真正做到「钱货两清」的是 buy()。
+     */
+    function list(address nftContract, uint256 tokenId, uint256 price) external {
+        if (price == 0) revert PriceMustBeGreaterThanZero();
+
+        IERC721 nft = IERC721(nftContract);
+
+        // 检查 1：调用者必须是持有者
+        if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
+
+        // 检查 2：市场必须已被授权，否则成交时转不动
+        // getApproved 只覆盖单枚授权，还要看全量授权，两者满足其一即可
+        bool approved = nft.getApproved(tokenId) == address(this) ||
+            nft.isApprovedForAll(msg.sender, address(this));
+        if (!approved) revert MarketNotApproved();
+
+        // 检查 3：不能重复挂单（同一枚同时只能有一个有效挂单）
+        if (_listings[nftContract][tokenId].active) revert AlreadyListed();
+
+        _listings[nftContract][tokenId] = Listing({seller: msg.sender, price: price, active: true});
+
+        emit Listed(nftContract, tokenId, msg.sender, price);
+    }
+
+    /**
+     * @notice 修改挂单价格
+     * @dev 只改价格，不重新校验授权与持有状态 —— 这是一处刻意的简化。
+     *      真实市场里改价通常要求重新校验，否则可能出现「已转走 NFT 还能改价」的脏数据。
+     *      成交时 buy() 会兜底校验持有者，所以不会造成资金损失。
+     */
+    function updatePrice(address nftContract, uint256 tokenId, uint256 newPrice) external {
+        Listing storage listing = _listings[nftContract][tokenId];
+        if (!listing.active) revert NotListed();
+        if (listing.seller != msg.sender) revert NotSeller();
+        if (newPrice == 0) revert PriceMustBeGreaterThanZero();
+
+        uint256 oldPrice = listing.price;
+        listing.price = newPrice;
+
+        emit PriceUpdated(nftContract, tokenId, oldPrice, newPrice);
+    }
+
+    /**
+     * @notice 撤销挂单
+     * @dev 重要：撤单【不会】自动撤销你对市场的授权。
+     *      链上授权还在，市场合约理论上仍能转走你的 NFT。
+     *      要彻底收回权限，请自己调用：
+     *        nft.approve(address(0), tokenId)              // 单枚
+     *        nft.setApprovalForAll(market, false)          // 全量
+     *      这正是上一轮练的重点：全量授权不会自动过期。
+     */
+    function cancel(address nftContract, uint256 tokenId) external {
+        Listing storage listing = _listings[nftContract][tokenId];
+        if (!listing.active) revert NotListed();
+        if (listing.seller != msg.sender) revert NotSeller();
+
+        listing.active = false;
+
+        emit Canceled(nftContract, tokenId, msg.sender);
+    }
+
+    // ========================================================================
+    // 买家侧：购买
+    // ========================================================================
+
+    /**
+     * @notice 购买一枚已挂单的 NFT
+     * @param nftContract NFT 合约地址
+     * @param tokenId     要买的 NFT 编号
+     *
+     * 执行顺序严格遵循 Checks-Effects-Interactions：
+     *   Checks      校验挂单有效、钱够、持有者没变
+     *   Effects     立刻把挂单置为失效、累加手续费（先改状态！）
+     *   Interactions 然后才做外部调用：转 NFT、付钱、退款
+     *
+     * 为什么顺序如此关键 —— 见上方「三、1) 重入攻击」。
+     */
+    function buy(address nftContract, uint256 tokenId) external payable nonReentrant {
+        Listing storage listing = _listings[nftContract][tokenId];
+
+        /* ---------------- Checks（检查） ---------------- */
+        if (!listing.active) revert NotListed();
+        if (msg.value < listing.price) {
+            revert InsufficientPayment(msg.value, listing.price);
+        }
+
+        address seller = listing.seller;
+        uint256 price = listing.price;
+
+        // 防御陈旧挂单：卖家可能已经把 NFT 转走，或撤销了授权
+        address currentOwner = IERC721(nftContract).ownerOf(tokenId);
+        if (currentOwner != seller) {
+            revert StaleListing(currentOwner, seller);
+        }
+
+        /* ---------------- Effects（改状态） ---------------- */
+        // 先置失效再转账 —— 这样即使后面有重入，也进不到这里
+        listing.active = false;
+
+        /* ---------------- Interactions（外部调用） ---------------- */
+        // 分账、转 NFT、给卖家打款，全部收敛到 _settleSale：
+        // 它与 acceptOffer 共用同一套实现，保证"买挂单"和"接受出价"的分账结果完全一致，
+        // 不会出现两套算法各算各的、某天算不一致的经典事故
+        _settleSale(nftContract, tokenId, seller, msg.sender, price);
+
+        // 多付的钱退给买家
+        uint256 excess = msg.value - price;
+        if (excess > 0) {
+            (bool refundOk, ) = payable(msg.sender).call{value: excess}("");
+            if (!refundOk) revert EthTransferFailed();
+        }
+    }
+
+    // ========================================================================
+    // 买家侧：凭卖家的链下签名直接成交（EIP-712 ListingIntent）
+    //
+    //   list() + buy()   —— 卖家先付 gas 写挂单，买家再付 gas 成交（两次链上写）
+    //   fulfillListing() —— 卖家只签名（零 gas、零链上痕迹），买家一次成交搞定
+    //
+    // 两者共用 _settleSale，分账规则完全一致，不存在两套算法各算各的隐患。
+    // ========================================================================
+
+    /**
+     * @notice 用卖家的链下签名直接买下一枚 NFT
+     * @param intent    卖家的挂单意图（原文，合约重新哈希后验签）
+     * @param seller    声称的卖家地址（签名者应当就是它）
+     * @param signature EIP-712 签名（65 字节标准格式，或 EIP-2098 紧凑格式）
+     *
+     * 为什么 seller 要单独传、而不是直接用验签恢复出的地址？
+     *   因为验签只能证明「某个地址签了这段数据」，不能证明「这个地址就是卖家」。
+     *   必须先显式声明期望的签名者，再校验持有状态与授权 —— 这是标准做法。
+     *
+     * 为什么用 SignatureChecker 而不是裸 ECDSA.recover？
+     *   它同时支持 EOA（ECDSA 恢复）和 ERC-1271 智能合约钱包（回调 isValidSignature），
+     *   一个函数覆盖两类账户，且自带对签名可塑性（malleability）的防护。
+     */
+    function fulfillListing(
+        ListingIntent calldata intent,
+        address seller,
+        bytes calldata signature
+    ) external payable nonReentrant {
+        /* ---------------- Checks（检查） ---------------- */
+        if (intent.price == 0) revert IntentPriceZero();
+        if (block.timestamp > intent.deadline) {
+            revert SignatureExpired(intent.deadline, block.timestamp);
+        }
+
+        uint256 expectedNonce = listingNonces[seller];
+        if (intent.nonce != expectedNonce) {
+            revert InvalidNonce(expectedNonce, intent.nonce);
+        }
+
+        // 验签：摘要里包含【域分隔符】——chainId + 本合约地址。
+        // 因此一条签名只在签发它的那条链、这个市场合约上有效，
+        // 天然具备防跨链重放、防跨市场重放的能力，无需额外编码
+        bytes32 digest = _hashIntent(intent);
+        if (!SignatureChecker.isValidSignatureNow(seller, digest, signature)) {
+            revert InvalidSignature();
+        }
+
+        if (msg.value < intent.price) {
+            revert InsufficientPayment(msg.value, intent.price);
+        }
+
+        IERC721 nft = IERC721(intent.nftContract);
+
+        // 与 list() 相同的两道前置校验：持有者 + 授权。
+        // 链下签名绕过了 list()，所以这些检查必须在成交时补上，一个都不能省
+        if (nft.ownerOf(intent.tokenId) != seller) revert NotTokenOwner();
+
+        bool approved = nft.getApproved(intent.tokenId) == address(this) ||
+            nft.isApprovedForAll(seller, address(this));
+        if (!approved) revert MarketNotApproved();
+
+        /* ---------------- Effects（改状态） ---------------- */
+        // 先消耗 nonce 再成交：即使后面外部调用里有人重入，
+        // 同一条签名也用不了第二次（重入 + 重放的双重防护）
+        listingNonces[seller] = expectedNonce + 1;
+
+        /* ---------------- Interactions（外部调用） ---------------- */
+        _settleSale(intent.nftContract, intent.tokenId, seller, msg.sender, intent.price);
+
+        // 多付的钱退给买家
+        uint256 excess = msg.value - intent.price;
+        if (excess > 0) {
+            (bool refundOk, ) = payable(msg.sender).call{value: excess}("");
+            if (!refundOk) revert EthTransferFailed();
+        }
+    }
+
+    /**
+     * @notice 卖家主动把自己的挂单 nonce +1，一次性作废所有未成交的链下签名
+     * @dev 这是链下挂单的「紧急下架」手段：
+     *      签名只存在于链下，合约无法主动删除它们，只能靠 nonce 跳跃让旧签名集体失配。
+     *      日常改价 / 下架根本不需要这一步 —— 在链下数据库里撤掉签名即可，零成本。
+     */
+    function incrementNonce() external {
+        uint256 oldNonce = listingNonces[msg.sender];
+        uint256 newNonce = oldNonce + 1;
+        listingNonces[msg.sender] = newNonce;
+        emit NonceIncremented(msg.sender, oldNonce, newNonce);
+    }
+
+    /// @notice 计算一条 ListingIntent 的 EIP-712 摘要（前端与测试可直接调用来对齐）
+    function hashListingIntent(ListingIntent calldata intent) external view returns (bytes32) {
+        return _hashIntent(intent);
+    }
+
+    /// @dev 内部：把 intent 编码后套上本合约的 EIP-712 域分隔符
+    function _hashIntent(ListingIntent calldata intent) private view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    LISTING_INTENT_TYPEHASH,
+                    intent.nftContract,
+                    intent.tokenId,
+                    intent.price,
+                    intent.deadline,
+                    intent.nonce
+                )
+            )
+        );
+    }
+
+    // ========================================================================
+    // 买家侧：出价（Offer）
+    //
+    // 与挂单方向相反：挂单是卖家定价等买家接受，出价是买家定价等持有者接受。
+    // 两者的成交结算走同一个 _settleSale，所以版税、平台费规则天然一致。
+    // ========================================================================
+
+    /**
+     * @notice 对任意一枚 NFT 出价（ETH 随交易进入合约代管）
+     * @param nftContract NFT 合约地址
+     * @param tokenId     目标 NFT 编号
+     *
+     * 设计要点：
+     *   1) 出价按买家分桶（_offers[nft][tokenId][bidder]），多人同时出价互不挤掉。
+     *      若改成"只保留最高价"，那么有人加价时就必须给上一位退款 ——
+     *      一次 push 调用，拒收 ETH 的恶意买家能把整个出价流程卡死。
+     *
+     *   2) 同一买家重复出价 = 累加（加价），同样是为了避免出现退款 push。
+     *      想改成更低的价格：先 withdrawOffer 取回，再重新 makeOffer。
+     *
+     *   3) 这里【没有】nonReentrant，不是忘了加，而是确实不需要：
+     *      函数体里唯一的外部调用是 IERC721.ownerOf，而它在接口里声明为 view，
+     *      Solidity 会用 STATICCALL 去调 —— 被调用方禁止改状态、禁止转账，
+     *      自然也没法回头调用本合约的任何写函数（重入面为零）。
+     *      反面案例见 withdrawOffer / rejectOffer：那里要转 ETH，用的是 CALL，
+     *      对方能在 receive 里回来，所以那两个函数必须加锁。
+     *      （判断要不要加锁看的是"用的是 CALL 还是 STATICCALL"，不是"有没有 external 调用"）
+     *
+     *   4) 不校验 NFT 是否存在 / 是否被挂单：出价是买家的单方意思表示，
+     *      对不存在的 tokenId 出价也只是浪费自己的钱（且随时可取回），
+     *      无需让合约替买家做判断，更不该因此 revert。
+     *      代价：对不存在 token 出价时 ownerOf 会 revert，这里直接透传该错误。
+     */
+    function makeOffer(address nftContract, uint256 tokenId) external payable {
+        if (msg.value == 0) revert OfferAmountZero();
+
+        Offer storage offer = _offers[nftContract][tokenId][msg.sender];
+
+        // 第一次出价时记录当时的持有者 —— 这是"易主即失效"的依据（见 acceptOffer）
+        if (offer.amount == 0) {
+            offer.targetOwner = IERC721(nftContract).ownerOf(tokenId);
+        }
+        offer.amount += msg.value;
+
+        emit OfferMade(nftContract, tokenId, msg.sender, msg.value, offer.amount);
+    }
+
+    /**
+     * @notice 买家取回自己在某枚 NFT 上的出价（全额）
+     *
+     * 为什么这里退款失败要 revert，而 rejectOffer 失败只是转待领池？
+     *   因为调用者就是收款人本人：他若拒收，整笔交易回滚，
+     *   钱仍好好记在他的出价里，随时可以再试一次 —— 不产生任何损失，
+     *   也不需要额外的待领池记账（少一份状态，少一个出 bug 的地方）。
+     */
+    function withdrawOffer(address nftContract, uint256 tokenId) external nonReentrant {
+        Offer storage offer = _offers[nftContract][tokenId][msg.sender];
+
+        /* ---------------- Checks ---------------- */
+        uint256 amount = offer.amount;
+        if (amount == 0) revert NoActiveOffer();
+
+        /* ---------------- Effects ---------------- */
+        // 先清零再转账：即使收款方在 receive 里重入 withdrawOffer，
+        // 第二次进来读到的 amount 已经是 0，会在上面的检查处失败
+        offer.amount = 0;
+        offer.targetOwner = address(0);
+
+        /* ---------------- Interactions ---------------- */
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        if (!ok) revert EthTransferFailed();
+
+        emit OfferWithdrawn(nftContract, tokenId, msg.sender, amount);
+    }
+
+    /**
+     * @notice 持有者拒绝一笔出价，尝试原路退回；买家拒收则转入待领池，绝不 revert
+     * @param bidder 要拒绝的出价人
+     *
+     * 【为什么这里绝不能 revert】
+     *   如果退回失败就让整笔交易回滚，那么任何人只要用一个拒收 ETH 的合约
+     *   对某枚 NFT 出价，就能让持有者永远无法拒绝任何出价 ——
+     *   持有者的资产处置权被一个无关地址劫持，这就是 DoS（拒绝服务）。
+     *
+     * 【退回失败后的钱去哪了】
+     *   记入 pendingWithdrawals[bidder]，等买家自己调 withdrawPendingFunds() 领走。
+     *   所谓 Pull Payment：把"我能不能收到钱"和"别人的操作能不能成功"彻底解耦。
+     *
+     * 【谁有权拒绝】
+     *   当前持有者（ownerOf == msg.sender）。注意这里【不】校验 targetOwner：
+     *   NFT 易主后新持有者去拒绝一笔陈旧的出价，效果是帮买家把钱退回去，
+     *   对所有人都是好事，没有理由禁止。
+     */
+    function rejectOffer(
+        address nftContract,
+        uint256 tokenId,
+        address bidder
+    ) external nonReentrant {
+        /* ---------------- Checks ---------------- */
+        if (IERC721(nftContract).ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
+
+        Offer storage offer = _offers[nftContract][tokenId][bidder];
+        uint256 amount = offer.amount;
+        if (amount == 0) revert NoActiveOffer();
+
+        /* ---------------- Effects ---------------- */
+        offer.amount = 0;
+        offer.targetOwner = address(0);
+
+        /* ---------------- Interactions ---------------- */
+        (bool ok, ) = payable(bidder).call{value: amount}("");
+        if (!ok) {
+            // 买家（或它那个会 revert 的合约）拒收 —— 不 revert，改走待领池
+            pendingWithdrawals[bidder] += amount;
+            emit RefundPending(bidder, amount);
+        }
+
+        emit OfferRejected(nftContract, tokenId, bidder, amount, ok);
+    }
+
+    /**
+     * @notice 持有者接受一笔出价，立刻成交
+     * @param bidder 要接受的出价人
+     *
+     * 校验四件事：
+     *   1. msg.sender 是当前持有者          → 否则 NotTokenOwner
+     *   2. 出价对象就是 msg.sender          → 否则 StaleOffer（NFT 已易主，旧出价失效）
+     *   3. 市场已被授权转这枚 NFT           → 否则 MarketNotApproved
+     *   4. 该买家确实有一笔有效出价         → 否则 NoActiveOffer
+     *
+     * 成交后【只清掉被接受的这一笔】，其他出价者的钱留在合约里等他们自己取回。
+     * 刻意不做批量退款：一次循环里只要有一个人拒收，整笔成交就会被卡死。
+     */
+    function acceptOffer(
+        address nftContract,
+        uint256 tokenId,
+        address bidder
+    ) external nonReentrant {
+        IERC721 nft = IERC721(nftContract);
+
+        /* ---------------- Checks ---------------- */
+        if (nft.ownerOf(tokenId) != msg.sender) revert NotTokenOwner();
+
+        Offer storage offer = _offers[nftContract][tokenId][bidder];
+        if (offer.targetOwner != msg.sender) {
+            // NFT 已经易主：新持有者不是当初被出价的那个人，旧出价自动失效。
+            // 买家随时可以 withdrawOffer 把钱取回，不会被锁在这里
+            revert StaleOffer(msg.sender, offer.targetOwner);
+        }
+
+        // 授权是成交的前提：没有它 safeTransferFrom 会失败，
+        // 但那种失败信息对新手极不友好，所以提前用业务错误挡掉
+        bool approved = nft.getApproved(tokenId) == address(this) ||
+            nft.isApprovedForAll(msg.sender, address(this));
+        if (!approved) revert MarketNotApproved();
+
+        // 这里【不需要】再判 price > 0：出价记录被清空时 targetOwner 会一并归零，
+        // 所以能走到这一步的必然是"targetOwner == msg.sender 且 amount > 0"的有效出价。
+        // 顺带说明：校验顺序（持有者 → 是否易主 → 授权）本身就是一条完整的存在性检查，
+        // 多写一句死代码反而误导读者。
+        uint256 price = offer.amount;
+
+        /* ---------------- Effects ---------------- */
+        // 先清掉这笔出价再成交：恶意买家若在 safeTransferFrom 的回调里重入
+        // acceptOffer，会在 NoActiveOffer（乃至更早的锁）处失败，无法二次成交
+        offer.amount = 0;
+        offer.targetOwner = address(0);
+
+        /* ---------------- Interactions ---------------- */
+        uint256 fee = _settleSale(nftContract, tokenId, msg.sender, bidder, price);
+
+        emit OfferAccepted(nftContract, tokenId, msg.sender, bidder, price, fee);
+    }
+
+    /**
+     * @notice 从待领池取走 ETH（rejectOffer 退款失败时钱会落到这里）
+     */
+    function withdrawPendingFunds() external nonReentrant {
+        uint256 amount = pendingWithdrawals[msg.sender];
+        if (amount == 0) revert NothingToWithdraw();
+
+        pendingWithdrawals[msg.sender] = 0; // 先改状态
+
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        if (!ok) revert EthTransferFailed();
+
+        emit PendingWithdrawn(msg.sender, amount);
+    }
+
+    // ========================================================================
+    // 内部：成交结算（挂单购买与接受出价共用）
+    // ========================================================================
+
+    /**
+     * @notice 一笔成交的完整结算：分账 → 转 NFT → 给卖家打款
+     * @param seller 卖家（挂单成交时是挂单人，接受出价时是持有者 msg.sender）
+     * @param buyer  买家（挂单成交时是 msg.sender，接受出价时是出价人）
+     * @return fee   本笔成交计入的平台手续费
+     *
+     * 这是全合约【唯一】动钱和动 NFT 的地方。
+     * 把 buy() 和 acceptOffer() 的结算逻辑收敛到一处，好处是：
+     *   · 不会出现两处分账算法某天不一致
+     *   · 新增成交方式（比如拍卖）时，复用它即可，安全性质自动继承
+     *
+     * 注意它没有 nonReentrant：调用它的 buy / acceptOffer 都已经上了锁，
+     * 这里再加一层锁反而会因为的重入保护的嵌套检测而直接 revert。
+     * 它的安全性来自【调用方已完成 Effects】：进入本函数时，
+     * 挂单 / 出价状态都已经被清掉了。
+     */
+    function _settleSale(
+        address nftContract,
+        uint256 tokenId,
+        address seller,
+        address buyer,
+        uint256 price
+    ) private returns (uint256 fee) {
+        // 三方分账：平台手续费 + 创作者版税 + 卖家实得，三者之和恒等于 price
+        uint256 royalty;
+        address royaltyReceiver;
+        uint256 sellerProceeds;
+        (fee, royalty, royaltyReceiver, sellerProceeds) = _splitProceeds(nftContract, tokenId, price);
+
+        if (fee > 0) {
+            accumulatedFees += fee; // 累积起来等 owner 提取，不在这里直接转（Pull Payment）
+        }
+
+        if (royalty > 0) {
+            // 版税同样只入账、不转账。receiver 拒收 ETH 时，只影响它自己提现，
+            // 不会连累这笔成交失败（Push 写法下的经典 DoS 陷阱）
+            pendingRoyalties[royaltyReceiver] += royalty;
+            emit RoyaltyPaid(nftContract, tokenId, royaltyReceiver, royalty);
+        }
+
+        // 1) 把 NFT 转给买家。用 safe 版本：如果买家是合约且不支持 NFT，整笔回滚
+        IERC721(nftContract).safeTransferFrom(seller, buyer, tokenId);
+
+        // 2) 给卖家打款。用 call 并检查返回值，不用 transfer（2300 gas 限制会误伤合约卖家）
+        (bool ok, ) = payable(seller).call{value: sellerProceeds}("");
+        if (!ok) revert EthTransferFailed();
+
+        emit Sold(nftContract, tokenId, seller, buyer, price, fee);
+    }
+
+    // ========================================================================
+    // 查询
+    // ========================================================================
+
+    /// @notice 查询一条挂单
+    function getListing(
+        address nftContract,
+        uint256 tokenId
+    ) external view returns (address seller, uint256 price, bool active) {
+        Listing storage l = _listings[nftContract][tokenId];
+        return (l.seller, l.price, l.active);
+    }
+
+    /**
+     * @notice 查询某个买家对某枚 NFT 的出价
+     * @return amount      托管中的出价金额（wei）；0 表示没有有效出价
+     * @return targetOwner 出价时的持有者。若它与当前持有者不一致，
+     *                     说明 NFT 已易主，这笔出价已无法被接受（只能由买家取回）
+     */
+    function getOffer(
+        address nftContract,
+        uint256 tokenId,
+        address bidder
+    ) external view returns (uint256 amount, address targetOwner) {
+        Offer storage o = _offers[nftContract][tokenId][bidder];
+        return (o.amount, o.targetOwner);
+    }
+
+    /**
+     * @notice 计算某价格的手续费与卖家实得（前端展示用，纯函数不花 gas）
+     */
+    function quote(
+        uint256 price
+    ) external view returns (uint256 fee, uint256 sellerProceeds) {
+        fee = (price * feeBps) / BPS_DENOMINATOR;
+        sellerProceeds = price - fee;
+    }
+
+    // ========================================================================
+    // 分账逻辑（手续费 + 版税 + 卖家实得）
+    // ========================================================================
+
+    /**
+     * @dev 把成交价 price 拆成三份。buy() 与 quoteWithRoyalty() 共用它，
+     *      保证"前端看到的预估"和"链上真实执行的"永远是同一套算法。
+     *
+     * 三条不变量（测试里逐条断言）：
+     *   1. fee + royalty + sellerProceeds == price      一分钱不多、一分钱不少
+     *   2. sellerProceeds >= 0                          绝不下溢
+     *   3. 整数除法的余数（最多 2 wei）全部落进 sellerProceeds
+     *
+     * @return fee            平台手续费
+     * @return royalty        创作者版税（不支持 2981 / 未设版税时为 0）
+     * @return royaltyReceiver 版税收款方（无版税时为 address(0)）
+     * @return sellerProceeds 卖家实得
+     */
+    function _splitProceeds(
+        address nftContract,
+        uint256 tokenId,
+        uint256 price
+    ) private view returns (uint256 fee, uint256 royalty, address royaltyReceiver, uint256 sellerProceeds) {
+        // 平台手续费：price * feeBps / 10000（向下取整）
+        fee = (price * feeBps) / BPS_DENOMINATOR;
+
+        // 版税：先做 ERC165 能力检测，再查报价
+        if (IERC165(nftContract).supportsInterface(INTERFACE_ID_ERC2981)) {
+            (address receiver, uint256 amount) = IERC2981(nftContract).royaltyInfo(tokenId, price);
+
+            // 只有"接收者有效 且 金额大于 0"才算版税。
+            // 未设版税的合集会返回 (address(0), 0) —— 走 else 分支，交易照常
+            if (receiver != address(0) && amount > 0) {
+                // 版税上限 = 扣掉平台费后剩下的全部。
+                // 没有这个钳制，恶意/配置失误的 NFT（100% 版税）会让下面的减法下溢，
+                // 导致该 NFT 在本市场永远卖不掉（panic 0x11 无法被 try/catch 捕获）
+                uint256 maxRoyalty = price - fee;
+                if (amount > maxRoyalty) {
+                    amount = maxRoyalty;
+                }
+
+                royalty = amount;
+                royaltyReceiver = receiver;
+            }
+        }
+
+        // 卖家拿剩下的全部（含取整余数）。royalty <= price - fee，所以不会下溢
+        sellerProceeds = price - fee - royalty;
+    }
+
+    /**
+     * @notice 前端专用：预估一笔成交的三方分账，纯 view 不花 gas
+     * @param nftContract NFT 合约地址
+     * @param tokenId     要买的 NFT 编号
+     * @param price       假设的成交价（wei）
+     */
+    function quoteWithRoyalty(
+        address nftContract,
+        uint256 tokenId,
+        uint256 price
+    )
+        external
+        view
+        returns (uint256 fee, uint256 royalty, address royaltyReceiver, uint256 sellerProceeds)
+    {
+        return _splitProceeds(nftContract, tokenId, price);
+    }
+
+    // ========================================================================
+    // 版税收款方：提取
+    // ========================================================================
+
+    /**
+     * @notice 提取属于 msg.sender 的版税（Pull Payment 的另一半）
+     *
+     * 与 withdrawFees 的两点不同：
+     *   1. 没有 onlyOwner —— 谁被 NFT 指定为版税接收者，谁就能提自己的那一份
+     *   2. 没有 ZeroAddress 校验 —— msg.sender 不可能是零地址，
+     *      而允许"提到别的地址"反而会把别人的版税转走，所以只允许提到 msg.sender
+     *
+     * 顺序依旧是先改状态（清零）再转账，配合 nonReentrant 防重入。
+     */
+    function withdrawRoyalties() external nonReentrant {
+        uint256 amount = pendingRoyalties[msg.sender];
+        if (amount == 0) revert NothingToWithdraw();
+
+        pendingRoyalties[msg.sender] = 0; // 先改状态
+
+        (bool ok, ) = payable(msg.sender).call{value: amount}("");
+        if (!ok) revert RoyaltyTransferFailed();
+
+        emit RoyaltyWithdrawn(msg.sender, amount);
+    }
+
+    // ========================================================================
+    // Owner 管理
+    // ========================================================================
+
+    /// @notice 调整手续费（受 MAX_FEE_BPS 上限约束）
+    function setFeeBps(uint256 newFeeBps) external onlyOwner {
+        _setFeeBps(newFeeBps);
+    }
+
+    /**
+     * @notice 提取累计手续费
+     * @param to 收款地址
+     *
+     * 这就是 Pull Payment：钱一直躺在合约里，owner 主动来取。
+     * 对比直接 push 给 owner 的做法，它把「owner 收不收款」和「市场能不能正常成交」
+     * 这两件事彻底解耦 —— 即使 owner 地址出问题，用户的买卖也不受影响。
+     */
+    function withdrawFees(address to) external onlyOwner nonReentrant {
+        if (to == address(0)) revert ZeroAddress();
+        uint256 amount = accumulatedFees;
+        if (amount == 0) revert NothingToWithdraw();
+
+        accumulatedFees = 0; // 先改状态再转账，防重入
+
+        (bool ok, ) = payable(to).call{value: amount}("");
+        if (!ok) revert EthTransferFailed();
+
+        emit FeesWithdrawn(to, amount);
+    }
+
+    /// @dev 内部设置费率，带上限校验
+    function _setFeeBps(uint256 newFeeBps) private {
+        if (newFeeBps > MAX_FEE_BPS) revert FeeTooHigh(newFeeBps, MAX_FEE_BPS);
+        uint256 old = feeBps;
+        feeBps = newFeeBps;
+        emit FeeBpsUpdated(old, newFeeBps);
+    }
+
+    /*
+     * ==========================================================================
+     * 【知识点】为什么用 call 而不是 transfer / send
+     * ==========================================================================
+     *   addr.transfer(x)   —— 固定转发 2300 gas，够发个日志，不够做任何逻辑
+     *   addr.send(x)       —— 同 2300 gas，但失败不 revert，只返回 false（易被忽略）
+     *   addr.call{value:x}("") —— 转发剩余全部 gas，返回 (bool, bytes)
+     *
+     * 2300 gas 的问题：如果收款方是合约（多签钱包、某些市场合约、Gnosis Safe），
+     * 它的 fallback 稍微复杂一点就会 out of gas，导致整个交易失败。
+     * 历史上多起因使用 transfer 导致资金卡死的案例。
+     *
+     * 当前最佳实践：用 call，然后【必须】检查返回值。
+     * 至于 call 带来的重入风险，用 nonReentrant + 先改状态来防，而不是靠限制 gas。
+     *
+     * 同理，本合约转 NFT 用 safeTransferFrom 而不是 transferFrom：
+     * 前者在接收方是合约时会校验它是否支持 NFT，防止资产被锁死。
+     * 代价是多一次外部调用、gas 略高（你上一轮实测约 +5,500 gas）。
+     * ==========================================================================
+     */
+}

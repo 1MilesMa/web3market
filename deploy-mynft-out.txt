@@ -1,0 +1,37 @@
+﻿============================================================
+ MyNFT 部署
+============================================================
+网络          : sepolia (chainId: 11155111)
+部署账户      : 0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8
+账户余额      : 0.097219050216352419 ETH
+合约 owner    : 0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8
+铸造上限      : 10000
+版税接收者    : 0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8
+版税率        : 500 / 10000 = 5.00%
+------------------------------------------------------------
+正在发送部署交易，等待矿工确认...
+交易哈希      : 0x1890ac43500391cdc17d435680d493dc73fa06adb1bd51a943b89adf108a03db
+[OK] 部署成功！
+合约地址      : 0x9EFe00123a6A22d903D63E195B7E87Bf3622412e
+所在区块      : 11631013
+消耗 gas      : 2108841
+gas 价格      : 1.342721691 gwei
+浏览器查看    : https://sepolia.etherscan.io/address/0x9EFe00123a6A22d903D63E195B7E87Bf3622412e
+交易详情      : https://sepolia.etherscan.io/tx/0x1890ac43500391cdc17d435680d493dc73fa06adb1bd51a943b89adf108a03db
+地址已保存到  : deployments\mynft-sepolia.json
+------------------------------------------------------------
+链上回读校验：
+  name()          : MyNFT
+  symbol()        : MNFT
+  owner()         : 0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8
+  maxSupply()     : 10000
+  totalSupply()   : 0
+  nextTokenId()   : 1
+  supportsInterface(0x2a55205a) : true
+  royaltyInfo(#1, 1 ETH) 接收者 : 0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8
+  royaltyInfo(#1, 1 ETH) 金额   : 0.05 ETH
+  royaltyDenominator()   : 10000
+============================================================
+下一步：铸造并做链上验证
+  npx hardhat run scripts/verify-mynft.js --network sepolia
+============================================================

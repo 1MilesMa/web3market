@@ -1,0 +1,71 @@
+# 合约源码验证（Etherscan / Sepolia）
+#
+# 为什么需要它：本机到 Etherscan 全域名被网络封堵，验证命令跑不通。
+# GitHub Actions 的服务器在境外，可以正常访问 Etherscan，由它代跑 npx hardhat verify。
+#
+# 触发方式：网页上手动点「Run workflow」，不需要 git 命令、不需要本地装 git。
+# 前置条件（只需配一次）：仓库 Settings → Secrets and variables → Actions
+#   - ETHERSCAN_API_KEY ：https://etherscan.io/myapikey 免费注册即得
+#   - SEPOLIA_RPC_URL   ：任意一个可用的 Sepolia RPC，例如 https://ethereum-sepolia-rpc.publicnode.com
+#
+# 说明：verify 只提交源码，不发交易，因此不需要任何私钥（仓库里也不放私钥）。
+
+name: 合约源码验证（Etherscan / Sepolia）
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+      SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+
+    steps:
+      - name: 拉取仓库代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 安装依赖
+        run: npm install --no-audit --no-fund
+
+      - name: 编译合约（确认源码与 Solidity 0.8.28 编译器可用）
+        run: npx hardhat compile
+
+      # 下面四步各自 continue-on-error：某个合约失败不会阻断其余合约
+      # 已验证过的合约会提示 "already verified"，属正常，不影响结果
+
+      - name: 验证 MyNFT
+        continue-on-error: true
+        run: |
+          npx hardhat verify --network sepolia 0x9EFe00123a6A22d903D63E195B7E87Bf3622412e \
+            0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8 \
+            10000 \
+            0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8 \
+            500
+
+      - name: 验证 SimpleMarket
+        continue-on-error: true
+        run: |
+          npx hardhat verify --network sepolia 0x71450D767f2b83722b88164316d7308DB20A39c8 \
+            0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8 \
+            250
+
+      - name: 验证 MultiSigOwner（数组参数，用参数文件传入）
+        continue-on-error: true
+        run: |
+          npx hardhat verify --network sepolia 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317 \
+            --constructor-args scripts/verify-args/multisig-args.js
+
+      - name: 验证 MarketTimelock（数组参数，用参数文件传入）
+        continue-on-error: true
+        run: |
+          npx hardhat verify --network sepolia 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119 \
+            --constructor-args scripts/verify-args/timelock-args.js

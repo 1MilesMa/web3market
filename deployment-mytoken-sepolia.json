@@ -1,0 +1,15 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "contract": "MyToken",
+  "address": "0xcc9f3027899899c743593E98be543B75B7BA0A05",
+  "txHash": "0xc867195d895c073a24f34dbf2a0bc0a19a6cb3664cd4cfe2c28013f0fb23fad4",
+  "blockNumber": 11613546,
+  "gasUsed": "725160",
+  "gasPriceWei": "1026455049",
+  "deployCostEth": "0.00074434414333284",
+  "initialSupply": 1000000,
+  "owner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "openzeppelin": "5.6.1",
+  "deployedAt": "2026-09-01T15:40:05.539Z"
+}

@@ -1,0 +1,219 @@
+﻿◇ injected env (3) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+
+Version
+=======
+> solidity-coverage: v0.8.17
+
+Instrumenting for coverage...
+=============================
+
+> HelloWeb3.sol
+> mocks\MaliciousActors.sol
+> MyNFT.sol
+> MyToken.sol
+> SimpleMarket.sol
+
+Compilation:
+============
+
+Compiled 33 Solidity files successfully (evm target: cancun).
+
+Network Info
+============
+> HardhatEVM: v2.29.1
+> network:    hardhat
+
+
+
+  HelloWeb3 (链上留言板)
+    部署与初始状态
+      √ 初始留言应为构造函数传入的内容 (48ms)
+      √ 初始历史条数为 1，更新次数为 0
+      √ owner 应为部署账户
+      √ 部署时应触发 MessageUpdated 事件（index = 0）
+      √ getEntry(0) 应返回初始留言及作者、时间戳
+    setMessage 写入
+      √ 写入后最新留言立即更新
+      √ 每次写入 updateCount +1、historyLength +1
+      √ 事件参数应包含作者、内容、时间戳与自增序号
+      √ 任何地址都可以留言（本合约无权限限制）
+    历史记录
+      √ 历史记录按写入顺序保存，作者各自记录
+      √ 时间戳应递增（后写入的不早于先写入的）
+      √ 拒绝：读取越界历史 revert（index out of range）
+    输入校验
+      √ 拒绝：空留言 revert（message cannot be empty）
+      √ 拒绝：超过 280 字符的留言 revert（message too long）
+      √ 边界：恰好 280 字符应被接受
+      √ 拒绝：留言被拒时历史记录不会增加
+
+  MyNFT (ERC721)
+    部署与初始状态
+      √ name / symbol 应正确
+      √ owner 应为部署账户
+      √ maxSupply 应为构造时传入的值
+      √ 初始状态：totalSupply / totalMinted 为 0，nextTokenId 为 1
+      √ 初始状态：公开铸造默认关闭
+      √ 支持 ERC721 与 ERC721Metadata 接口
+      √ 支持 ERC721Enumerable 与 ERC4906 接口（多继承覆写生效）
+      √ 拒绝：构造时 maxSupply 为 0 revert
+      √ 不支持的随机接口应返回 false
+    safeMint 铸造
+      √ owner 铸造：ownerOf 与 balanceOf 正确，totalSupply 增加
+      √ 铸造应从零地址发出 Transfer 事件
+      √ tokenId 从 1 开始自增，totalMinted 同步递增
+      √ tokenURI 应为铸造时传入的 metadata 链接
+      √ 拒绝：非 owner 铸造 revert（OwnableUnauthorizedAccount）
+      √ 拒绝：空 tokenURI revert（EmptyTokenURI）
+      √ 拒绝：铸造给零地址 revert（ERC721InvalidReceiver）
+      √ 拒绝：超过供应上限 revert（ExceedsMaxSupply）
+    publicMint 公开铸造
+      √ 拒绝：开关未打开时 revert（PublicMintDisabled）
+      √ 开启后任何人可铸造，且铸造给 msg.sender
+      √ 公开铸造不影响 owner 归属，且切换开关会发出事件
+      √ 拒绝：非 owner 切换开关 revert（OwnableUnauthorizedAccount）
+    tokenId 唯一性
+      √ owner 可指定 tokenId 铸造
+      √ 拒绝：重复 tokenId 铸造 revert（ERC721InvalidSender）
+      √ 拒绝：指定 tokenId 铸造时空 URI revert（EmptyTokenURI）
+      √ 拒绝：非 owner 指定 tokenId 铸造 revert
+    转账
+      √ 持有者可用 transferFrom 转出：归属与余额同步变化
+      √ 转账应触发 Transfer 事件
+      √ safeTransferFrom 与 transferFrom 结果一致（对 EOA 无额外检查）
+      √ 拒绝：未授权者转账他人 NFT revert（ERC721InsufficientApproval）
+      √ 拒绝：from 参数与真实持有者不符 revert（ERC721IncorrectOwner）
+      √ 拒绝：转账到零地址 revert（ERC721InvalidReceiver）
+      √ 拒绝：转账不存在的 tokenId revert（ERC721NonexistentToken）
+    授权
+      √ approve 后 getApproved 正确，并触发 Approval 事件
+      √ 被授权者可代持转账，转账后授权自动清空
+      √ 拒绝：非持有者调用 approve revert（ERC721InvalidApprover）
+      √ 拒绝：approve 不存在的 tokenId revert（ERC721NonexistentToken）
+      √ setApprovalForAll 授权后，operator 可转走该持有者的任意 NFT (42ms)
+      √ setApprovalForAll 可撤销授权
+      √ 拒绝：把零地址设为 operator revert（ERC721InvalidOperator）
+    Enumerable 枚举
+      √ tokenOfOwnerByIndex 应返回该地址持有的第 N 个 tokenId
+      √ tokenByIndex 与 totalSupply 配合可遍历全部 NFT
+      √ 拒绝：tokenOfOwnerByIndex 越界 revert（ERC721OutOfBoundsIndex）
+      √ 拒绝：对空地址调用 tokenOfOwnerByIndex 越界 revert
+      √ 拒绝：tokenByIndex 全局越界 revert（owner 为零地址）
+      √ 转账后枚举结果随之更新
+    burn 销毁
+      √ 持有者可销毁自己的 NFT，totalSupply 减少
+      √ 销毁后 ownerOf 该 tokenId 应 revert
+      √ 销毁不会回退 totalMinted（它是历史累计值）
+      √ 被授权者可代持有者销毁
+      √ 拒绝：无权限者销毁 revert（NotAuthorizedToBurn）
+      √ 拒绝：销毁不存在的 tokenId revert（ERC721NonexistentToken）
+    查询不存在的 tokenId
+      √ ownerOf 不存在的 tokenId revert（ERC721NonexistentToken）
+      √ tokenURI 不存在的 tokenId revert（ERC721NonexistentToken）
+      √ getApproved 不存在的 tokenId revert（ERC721NonexistentToken）
+      √ balanceOf 零地址 revert（ERC721InvalidOwner）
+
+  MyToken (ERC20)
+    部署与初始状态
+      √ name / symbol / decimals 应正确
+      √ totalSupply 应为 100 万枚（最小单位）
+      √ owner 应为部署账户
+      √ 初始发行量应全部归 owner，其他账户为 0
+      √ 部署时应从零地址发出 Transfer 事件（铸造语义）
+    transfer
+      √ 正常转账：双方余额变化，totalSupply 不变
+      √ 转账应触发 Transfer 事件
+      √ 边界：转账给自己，余额不变但事件照常触发
+      √ 边界：转账 0，余额不变且允许成功
+      √ 拒绝：余额不足时 revert（ERC20InsufficientBalance）
+      √ 拒绝：转账到零地址 revert（ERC20InvalidReceiver）
+    approve 与 transferFrom
+      √ approve 后 allowance 正确，并触发 Approval 事件
+      √ 边界：approve 0 表示撤销授权
+      √ 代扣成功：资金从 owner 流向收款方，allowance 递减
+      √ 拒绝：超额代扣 revert（ERC20InsufficientAllowance）
+      √ 拒绝：未授权就代扣 revert（allowance 为 0）
+      √ 拒绝：approve 给零地址 revert（ERC20InvalidSpender）
+    mint 权限与增发
+      √ owner 可增发：余额与 totalSupply 同步增加
+      √ 拒绝：非 owner 调用 mint revert（OwnableUnauthorizedAccount）
+      √ 拒绝：非 owner 增发后 totalSupply 不变
+    burn 销毁
+      √ 持币人可用 ERC20Burnable.burn 销毁自己的代币
+      √ owner 可用 burn(address,uint256) 销毁指定地址的代币
+      √ 拒绝：非 owner 调用 burn(address,uint256) revert
+      √ 拒绝：销毁数量超过余额 revert（ERC20InsufficientBalance）
+      √ 拒绝：owner 超额销毁他人代币 revert
+    综合：供应量守恒
+      √ 多轮转账 + 增发 + 销毁后，各账户余额之和恒等于 totalSupply
+      √ 授权额度可被多次代扣，累计不超过授权上限
+
+  SimpleMarket
+    部署与初始状态
+      √ owner 应正确设置
+      √ 初始手续费应为构造时传入的 250 bps（2.5%）
+      √ MAX_FEE_BPS 应为 1000（10%）
+      √ 初始待提取手续费与合约余额均为 0
+      √ 构造时手续费超过上限应 revert FeeTooHigh
+    挂单
+      √ 持有且已授权时应挂单成功，并发出 Listed 事件
+      √ 挂单不应转移 NFT（授权式而非托管式）
+      √ 价格为 0 应 revert PriceMustBeGreaterThanZero
+      √ 非持有者挂单应 revert NotTokenOwner
+      √ 未授权市场时挂单应 revert MarketNotApproved
+      √ 使用 setApprovalForAll 全量授权也能挂单
+      √ 重复挂单应 revert AlreadyListed
+    购买
+      √ 购买成功：NFT 转给买家、卖家收到扣费后的金额、手续费入账
+      √ 购买成功应发出 Sold 事件（含买家与手续费）
+      √ 购买后授权应被清空（OZ v5 转移即清授权）
+      √ 多付的 ETH 应退还给买家（精确到 wei，已扣除 gas）
+      √ 付款不足应 revert InsufficientPayment，并携带实付与应付金额
+      √ 购买未挂单的 NFT 应 revert NotListed
+      √ 同一枚 NFT 不能被购买两次（第二次 NotListed）
+      √ 【陈旧挂单】卖家挂单后转走 NFT，购买应 revert StaleListing
+      √ 卖家撤销授权后，购买应失败（safeTransferFrom 会 reject）
+    安全防线
+      √ 【重入攻击】恶意买家在收到 NFT 时重入 buy，应被挡下且交易正常完成 (42ms)
+      √ 【原子性】卖家拒绝收款时，整笔交易回滚，NFT 不转移、挂单仍有效 (48ms)
+      √ 【对比组】愿意收款的合约卖家可以正常成交（call 而非 transfer 的价值）
+    改价与撤单
+      √ 卖家可以改价，并发出 PriceUpdated 事件
+      √ 非卖家改价应 revert NotSeller
+      √ 未挂单时改价应 revert NotListed
+      √ 改价为 0 应 revert PriceMustBeGreaterThanZero
+      √ 卖家可以撤单，并发出 Canceled 事件
+      √ 非卖家撤单应 revert NotSeller
+      √ 撤单后无法被购买
+      √ 撤单不会自动撤销授权（需自行 revoke）
+    手续费与提现
+      √ 非 owner 设置费率应 revert OwnableUnauthorizedAccount
+      √ owner 可以在上限内调整费率，并发出事件
+      √ 费率可以设为 0（免手续费）
+      √ 费率超过 10% 上限应 revert FeeTooHigh
+      √ quote 应返回正确的手续费与卖家实得
+      √ 调整费率后，新成交按新费率计算
+      √ owner 可以提取累计手续费，并发出 FeesWithdrawn
+      √ 非 owner 提现应 revert OwnableUnauthorizedAccount
+      √ 没有可提手续费时应 revert NothingToWithdraw
+      √ 提到零地址应 revert ZeroAddress
+      √ 手续费可以提到 owner 之外的地址
+
+
+  141 passing (2s)
+
+----------------------|----------|----------|----------|----------|----------------|
+File                  |  % Stmts | % Branch |  % Funcs |  % Lines |Uncovered Lines |
+----------------------|----------|----------|----------|----------|----------------|
+ contracts\           |     98.8 |    92.11 |    96.77 |    99.07 |                |
+  HelloWeb3.sol       |      100 |      100 |      100 |      100 |                |
+  MyNFT.sol           |       95 |      100 |    91.67 |    96.77 |            382 |
+  MyToken.sol         |      100 |      100 |      100 |      100 |                |
+  SimpleMarket.sol    |      100 |     87.5 |      100 |      100 |                |
+ contracts\mocks\     |      100 |      100 |      100 |    93.33 |                |
+  MaliciousActors.sol |      100 |      100 |      100 |    93.33 |             69 |
+----------------------|----------|----------|----------|----------|----------------|
+All files             |    98.88 |    92.31 |    97.22 |    98.37 |                |
+----------------------|----------|----------|----------|----------|----------------|
+
+> Istanbul reports written to ./coverage/ and ./coverage.json

@@ -1,0 +1,2318 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Code coverage report for contracts\mocks\MaliciousActors.sol</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+<body>
+<div class='wrapper'>
+  <div class='pad1'>
+    <h1>
+      <a href="../../index.html">all files</a> / <a href="index.html">contracts/mocks/</a> MaliciousActors.sol
+    </h1>
+    <div class='clearfix'>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">92.5% </span>
+        <span class="quiet">Statements</span>
+        <span class='fraction'>37/40</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">66.67% </span>
+        <span class="quiet">Branches</span>
+        <span class='fraction'>20/30</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">90.63% </span>
+        <span class="quiet">Functions</span>
+        <span class='fraction'>29/32</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">88.5% </span>
+        <span class="quiet">Lines</span>
+        <span class='fraction'>100/113</span>
+      </div>
+    </div>
+  </div>
+  <div class='status-line high'></div>
+<pre><table class="coverage">
+<tr><td class="line-count quiet">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470
+471
+472
+473
+474
+475
+476
+477
+478
+479
+480
+481
+482
+483
+484
+485
+486
+487
+488
+489
+490
+491
+492
+493
+494
+495
+496
+497
+498
+499
+500
+501
+502
+503
+504
+505
+506
+507
+508
+509
+510
+511
+512
+513
+514
+515
+516
+517
+518
+519
+520
+521
+522
+523
+524
+525
+526
+527
+528
+529
+530
+531
+532
+533
+534
+535
+536
+537
+538
+539
+540
+541
+542
+543
+544
+545
+546
+547
+548
+549
+550
+551
+552
+553
+554
+555
+556
+557
+558
+559
+560
+561
+562
+563
+564
+565
+566
+567
+568
+569
+570
+571
+572
+573
+574
+575
+576
+577
+578
+579
+580
+581
+582
+583
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599
+600
+601
+602
+603
+604
+605
+606
+607
+608
+609
+610
+611
+612
+613
+614
+615
+616
+617
+618
+619
+620
+621
+622
+623
+624
+625
+626
+627
+628
+629
+630
+631
+632
+633
+634
+635
+636
+637
+638
+639
+640
+641
+642
+643
+644
+645
+646
+647
+648
+649
+650
+651
+652
+653
+654
+655
+656
+657
+658
+659
+660
+661
+662
+663
+664
+665
+666
+667
+668
+669
+670
+671
+672
+673
+674
+675
+676
+677
+678
+679
+680
+681
+682
+683
+684
+685
+686
+687
+688
+689
+690
+691
+692
+693
+694
+695
+696
+697
+698
+699
+700
+701
+702
+703
+704
+705
+706
+707
+708
+709
+710
+711
+712
+713
+714
+715
+716
+717
+718
+719
+720
+721
+722
+723
+724
+725
+726
+727
+728
+729
+730
+731
+732
+733
+734
+735
+736
+737
+738
+739
+740
+741
+742
+743
+744
+745
+746
+747
+748
+749
+750
+751
+752</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-yes">7×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">8×</span>
+<span class="cline-any cline-yes">8×</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10×</span>
+<span class="cline-any cline-yes">6×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+&nbsp;
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {SimpleMarket} from "../SimpleMarket.sol";
+&nbsp;
+/**
+ * @title 测试用的恶意 / 异常合约
+ *
+ * 这些合约【仅用于单元测试】，绝不是要部署上线的东西。
+ * 它们的作用是模拟攻击者与异常场景，用来验证我们的市场合约是否真的扛得住。
+ *
+ * 安全领域的一条基本原则：
+ *   你不写攻击合约去打自己的合约，就永远不知道防线是否真的有效。
+ *   「看起来对」和「被攻击后仍然对」是两回事。
+ */
+&nbsp;
+/**
+ * @notice 恶意买家：收到 NFT 的瞬间尝试重入 buy()
+ *
+ * 攻击原理：
+ *   市场用 safeTransferFrom 把 NFT 转给买家时，如果买家是合约，
+ *   会回调它的 onERC721Received —— 这是一个免费的执行窗口。
+ *   攻击者在窗口里再次调用 buy()，试图在挂单状态还没更新时重复购买
+ *   （或者更狠的场景：把同一枚 NFT 反复卖给自己、反复套出 ETH）。
+ *
+ * 我们期望的结果：
+ *   市场的两道防线（先改状态 + nonReentrant）会让第二次 buy 失败，
+ *   reentrySucceeded 保持 false。
+ */
+contract MaliciousBuyer is IERC721Receiver {
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+    uint256 public price;
+&nbsp;
+    /// @notice 重入尝试次数
+    uint256 public reentryAttempts;
+&nbsp;
+    /// @notice 重入是否成功 —— 测试断言它必须为 false
+    bool public reentrySucceeded;
+&nbsp;
+    /// @notice 发起攻击：调用市场的 buy
+    function attack(address marketAddr, address nftAddr, uint256 tokenId_, uint256 price_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        price = price_;
+        market.buy{value: price_}(nftAddr, tokenId_);
+    }
+&nbsp;
+    /**
+     * @dev 收到 NFT 时的回调 —— 攻击窗口就在这里
+     *
+     * 用 try/catch 捕获失败：如果市场防护生效，重入的 buy 会 revert，
+     * 被 catch 住后我们照常返回正确的 selector，让外层交易继续完成。
+     * 这样测试才能走到最后去检查 reentrySucceeded == false。
+     */
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        reentryAttempts += 1;
+        // 尝试再次购买同一枚 NFT。若防护有效，这里必然失败
+        try market.buy{value: price}(nft, tokenId) {
+            reentrySucceeded = true; // 如果走到这里，说明市场被打穿了
+        } catch {
+            // 预期路径：被 nonReentrant 或 NotListed 挡下
+        }
+        return IERC721Receiver.onERC721Received.selector;
+    }
+&nbsp;
+    /// @dev 能接收退款
+    receive() external payable {}
+}
+&nbsp;
+/**
+ * @notice 拒绝收款的卖家：用来验证「钱货两清」的原子性
+ *
+ * 场景：卖家是一个合约，且它的 receive 会 revert（可能是被恶意设计，
+ *      也可能是多签钱包配置错误、fallback 太复杂导致 gas 不够等）。
+ *
+ * 我们期望的结果：
+ *   市场给卖家打款失败 → 整笔交易 revert → NFT 也不转移、挂单仍有效。
+ *   绝不能出现「NFT 已经给了买家，但卖家没收到钱」这种单方面损失。
+ *   这就是原子性：要么全成功，要么全回滚。
+ */
+contract RejectingSeller is IERC721Receiver {
+    /// @notice 是否拒绝接收 ETH
+    bool public rejectEth;
+&nbsp;
+    constructor(bool rejectEth_) {
+        rejectEth = rejectEth_;
+    }
+&nbsp;
+    /// @dev 挂单：先授权市场，再挂单。必须由本合约持有 NFT 时调用
+    function listOnMarket(address marketAddr, address nftAddr, uint256 tokenId_, uint256 price_) external {
+        IERC721(nftAddr).approve(marketAddr, tokenId_);
+        SimpleMarket(marketAddr).list(nftAddr, tokenId_, price_);
+    }
+&nbsp;
+    /// @dev 正常接收 NFT（否则挂单前的铸造都无法完成）
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+&nbsp;
+    /// @dev 收 ETH 时按配置拒绝 —— 这里是触发回滚的关键
+    receive() external payable {
+        if (rejectEth) {
+            revert("RejectingSeller: I refuse ETH");
+        }
+    }
+}
+&nbsp;
+/**
+ * @notice 拒收退款的买家：能正常接收 NFT，但收不进任何 ETH
+ *
+ * 场景：买家多付了 ETH（前端估算偏差、抢单时多给），市场在成交末尾会把
+ *      多出来的部分退回去。如果这个买家是个"只进不出"的合约 ——
+ *      它的 receive 直接 revert —— 退款就会失败。
+ *
+ * 这个合约覆盖的是 buy() 里的最后一道分支：
+ *      uint256 excess = msg.value - price;
+ *      if (excess &gt; 0) {
+ *          (bool refundOk, ) = payable(msg.sender).call{value: excess}("");
+ *          if (!refundOk) revert EthTransferFailed();   // ← 本合约要打的就是这里
+ *      }
+ *
+ * 我们要验证两件事：
+ *   1. 退款失败必须 revert EthTransferFailed（而不是默默吞掉多付的钱，
+ *      也不是让买家白拿 NFT）；
+ *   2. 整笔交易原子回滚 —— NFT 回到卖家手上、挂单依然有效、买家没收到 NFT。
+ *
+ * 注意它与 RejectingSeller 的区别：
+ *   RejectingSeller 卡的是"给卖家打款"这一步（发生在转 NFT 之后），
+ *   本合约卡的是"给买家退款"这一步（发生在最后）。
+ *   两步都必须触发整体回滚，缺一不可测。
+ *
+ * 为什么它必须正确实现 onERC721Received？
+ *   因为市场转 NFT 用的是 safeTransferFrom。如果本合约不返回正确的 selector，
+ *   交易会在转 NFT 那一步就失败，根本走不到退款分支，测不到我们想测的东西。
+ */
+contract RefundRejectingBuyer is IERC721Receiver {
+    /// @notice 本次攻击的目标市场
+    SimpleMarket public market;
+&nbsp;
+    /// @notice 目标 NFT 合约与编号（留档，便于在测试中回读）
+    address public nft;
+    uint256 public tokenId;
+&nbsp;
+    /// @notice 是否真的收到过 NFT。整笔回滚后它必然是 false
+    bool public receivedNft;
+&nbsp;
+    /**
+     * @notice 发起购买：把调用者给的 ETH 原样转发给 buy
+     *
+     * 调用方要带 value = price + 多付部分，且必须严格大于 price，
+     * 否则 buy 里的 if (excess &gt; 0) 走不进去，测不到退款分支。
+     */
+    function attack(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        market.buy{value: msg.value}(nftAddr, tokenId_);
+    }
+&nbsp;
+    /// @dev 正常接收 NFT（必须返回 selector，否则进不到退款那一步）
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        receivedNft = true;
+        return IERC721Receiver.onERC721Received.selector;
+    }
+&nbsp;
+    /// @dev 一分钱 ETH 都不收 —— 退款必然失败
+    receive() external payable {
+        revert("RefundRejectingBuyer: I refuse ETH");
+    }
+&nbsp;
+    /// @dev fallback 也堵死，避免有人用带数据的 call 绕过 receive
+<span class="fstat-no" title="function not covered" >    fallback() external payable {</span>
+<span class="cstat-no" title="statement not covered" >        revert("RefundRejectingBuyer: I refuse ETH")</span>;
+    }
+}
+&nbsp;
+/**
+ * @notice 拒收 ETH 的收款地址：专门用来卡 withdrawFees 的打款分支
+ *
+ * 场景：owner 调用 withdrawFees(to) 提取手续费，但 to 是一个拒绝收款的合约。
+ *      市场里那行代码是：
+ *          (bool ok, ) = payable(to).call{value: amount}("");
+ *          if (!ok) revert EthTransferFailed();   // ← 本合约要打的就是这里
+ *
+ * 期望行为：
+ *   1. 交易 revert EthTransferFailed；
+ *   2. accumulatedFees【不能被清零】 —— accumulatedFees = 0 虽然写在转账之前
+ *      （先改状态再转账，防重入的标准写法），但整笔回滚会让状态一起复原，
+ *      钱依然记在市场账上，owner 换个地址还能再取。
+ *      这种"失败即全额复原"正是我们要验证的原子性。
+ */
+contract EthRejectingReceiver {
+    /// @notice 是否真的收到过 ETH。交易回滚后必然是 false
+    bool public gotEth;
+&nbsp;
+    /// @dev 收 ETH 一律拒绝
+    receive() external payable {
+        gotEth = true; // 这一行会随下面的 revert 一起回滚，实际永远是 false
+        revert("EthRejectingReceiver: I refuse ETH");
+    }
+&nbsp;
+    /// @dev fallback 同样拒绝
+<span class="fstat-no" title="function not covered" >    fallback() external payable {</span>
+<span class="cstat-no" title="statement not covered" >        revert("EthRejectingReceiver: I refuse ETH")</span>;
+    }
+}
+&nbsp;
+/**
+ * @notice 重入探针：不只是"重入失败"，还要把失败原因带回来
+ *
+ * 与 MaliciousBuyer 的区别：
+ *   MaliciousBuyer 用 try/catch 吞掉了重入的失败原因，只能证明"没成功"；
+ *   本合约用低级 call 把 revert 数据原样存下来，于是我们能【断言失败原因本身】。
+ *
+ * 这一点很重要：重入被挡下的原因必须是我们预期的那个
+ * （ReentrancyGuardReentrantCall，来自 nonReentrant 修饰符），
+ * 而不是碰巧因为别的检查（比如挂单已失效 NotListed）而失败。
+ * 只有确认了原因，才能说"nonReentrant 这道防线真的起作用了"。
+ *
+ * 顺带它还能把 ReentrancyGuard 那条 modifier 分支真正跑一遍 ——
+ * 修饰符的 revert 分支平时极难被覆盖，必须有人在回调里重入才能打到。
+ */
+contract ReentrancyProbe is IERC721Receiver {
+    /// @notice 目标市场 / NFT / 编号 / 出价
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+    uint256 public price;
+&nbsp;
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+&nbsp;
+    /// @notice 重入失败时返回的 revert 数据（前 4 字节就是错误选择器）
+    bytes public reentryRevertData;
+&nbsp;
+    /// @dev 正常接收 NFT（否则走不到重入那一步）
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        // 用低级 call 重入 buy，这样即使失败也不会中断外层交易
+        (bool ok, bytes memory data) = address(market).call{value: price}(
+            abi.encodeWithSignature("buy(address,uint256)", nft, tokenId)
+        );
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+            reentrySucceeded = true; // 走到这里说明市场被打穿了
+        } else {
+            reentryRevertData = data; // 把失败原因存下来供测试断言
+        }
+        return IERC721Receiver.onERC721Received.selector;
+    }
+&nbsp;
+    /// @notice 发起购买
+    function attack(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        price = msg.value;
+        market.buy{value: msg.value}(nftAddr, tokenId_);
+    }
+&nbsp;
+    /// @dev 能接收退款
+    receive() external payable {}
+}
+&nbsp;
+/**
+ * @notice 重入提现的收款方：在收到手续费的瞬间，再调一次 withdrawFees
+ *
+ * 场景：owner 把手续费提到某个合约地址，该合约的 receive 里又去调 withdrawFees，
+ *      试图再套一次钱（此时 accumulatedFees 已经被清零，但攻击者的思路就是
+ *      赌"状态还没更新"或者能绕过锁）。
+ *
+ * 期望结果：
+ *   1. 重入调用被 nonReentrant 挡下，返回 ReentrancyGuardReentrantCall；
+ *   2. 外层那笔正常提现不受影响，钱照常到账。
+ *
+ * 这个合约的作用是覆盖 withdrawFees 上 nonReentrant 修饰符的 revert 分支 ——
+ * 修饰符分支只有在"真的有人重入"时才会被执行到，平时永远走不到。
+ */
+contract ReenteringFeeReceiver {
+    /// @notice 目标市场
+    SimpleMarket public market;
+&nbsp;
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+&nbsp;
+    /// @notice 重入失败时返回的 revert 数据
+    bytes public reentryRevertData;
+&nbsp;
+    constructor(address marketAddr) {
+        market = SimpleMarket(marketAddr);
+    }
+&nbsp;
+    /// @dev 收到手续费的瞬间尝试再提一次。用低级 call，失败也不影响外层交易
+    receive() external payable {
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature("withdrawFees(address)", address(this))
+        );
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+            reentrySucceeded = true;
+        } else {
+            reentryRevertData = data;
+        }
+    }
+}
+&nbsp;
+/**
+ * @notice 会重入的 owner：专门用来打 withdrawFees 上 nonReentrant 那条分支
+ *
+ * 为什么需要这个合约：
+ *   withdrawFees 的修饰符顺序是 onlyOwner → nonReentrant。
+ *   普通收款方重入时，第一个修饰符 onlyOwner 就把它挡了（拿到的是
+ *   OwnableUnauthorizedAccount），根本轮不到锁出场。
+ *   要让 nonReentrant 的 revert 分支真正被执行，重入者必须是 owner 本人。
+ *   于是我们把 owner 转移给这个合约，让它在收到提现款的瞬间再提一次。
+ *
+ * 期望结果：
+ *   owner 自己重入也会被那把锁挡下 —— 这正是"锁不看身份，只看状态"的含义。
+ */
+contract ReenteringOwner {
+    /// @notice 目标市场
+    SimpleMarket public market;
+&nbsp;
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+&nbsp;
+    /// @notice 重入失败时返回的 revert 数据
+    bytes public reentryRevertData;
+&nbsp;
+    constructor(address marketAddr) {
+        market = SimpleMarket(marketAddr);
+    }
+&nbsp;
+    /// @notice 接受市场所有权（SimpleMarket 升级为 Ownable2Step 后需要这一步）
+    function acceptOwnership() external {
+        market.acceptOwnership();
+    }
+&nbsp;
+    /// @notice 以 owner 身份发起提现（本合约已被转移为 market 的 owner）
+    /// @param to 提现收款地址，传本合约自己才能在 receive 里触发重入
+    function drain(address to) external {
+        market.withdrawFees(to);
+    }
+&nbsp;
+    /// @dev 收到提现款的瞬间，以 owner 身份再提一次
+    receive() external payable {
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature("withdrawFees(address)", address(this))
+        );
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+            reentrySucceeded = true;
+        } else {
+            reentryRevertData = data;
+        }
+    }
+}
+&nbsp;
+/* ==========================================================================
+ * 以下三个是 EIP-2981（版税）专项测试用的合约
+ * ==========================================================================
+ */
+&nbsp;
+/**
+ * @notice 普通 ERC721 合集：故意【不】继承 ERC2981
+ *
+ * 用途：验证市场合约的"优雅降级"。
+ * 现实背景：2021 年 EIP-2981 定稿前部署的 NFT（CryptoPunks、早期藏品）都没有
+ * royaltyInfo 函数。市场如果无脑调用 IERC2981(nft).royaltyInfo(...)，
+ * 会因为没有这个函数而 revert，结果是这些 NFT 在本市场【根本卖不掉】。
+ *
+ * 正确做法（市场里已实现）：先 IERC165.supportsInterface(0x2a55205a)，
+ * 返回 false 就直接跳过版税。本合约 supportsInterface(0x2a55205a) 返回 false，
+ * 因为 ERC721 基础实现只认 ERC721 / ERC721Metadata / ERC165 三个 id。
+ */
+contract PlainERC721 is ERC721 {
+    uint256 private _nextId = 1;
+&nbsp;
+    constructor() ERC721("PlainNFT", "PNFT") {}
+&nbsp;
+    /// @notice 无门槛铸造，方便测试随意造 NFT
+    function mint(address to) external returns (uint256 tokenId) {
+        tokenId = _nextId++;
+        _safeMint(to, tokenId);
+    }
+}
+&nbsp;
+/**
+ * @notice 拒收 ETH 的版税收款方
+ *
+ * 用途：验证 Pull Payment 的核心价值 —— 版税收款方出问题，只影响它自己提现，
+ * 【不】影响成交。
+ *
+ * 对照实验（本合约存在的意义）：
+ *   若市场写成 push（buy 里直接给 receiver 转账）：
+ *       receiver 拒收 → buy 整体 revert → 卖家卖不掉、买家买不到，
+ *       一个跟交易无关的第三方把整条链路拖死（DoS）
+ *   写成 pull（现在的做法）：
+ *       成交照常成功，版税只是记在 pendingRoyalties 里；
+ *       receiver 什么时候能收，是它自己的事
+ */
+contract RoyaltyRejectingReceiver {
+    /// @notice 是否收到过 ETH —— 期望永远为 false（收到就 revert，状态被回滚）
+    bool public gotEth;
+&nbsp;
+    /// @notice 提现入口，供测试调用
+    function withdraw(address marketAddr) external {
+        SimpleMarket(marketAddr).withdrawRoyalties();
+    }
+&nbsp;
+    /// @dev 收到任何 ETH 都立刻回滚
+    receive() external payable {
+        gotEth = true;
+        revert("RoyaltyRejectingReceiver: I refuse ETH");
+    }
+&nbsp;
+<span class="fstat-no" title="function not covered" >    fallback() external payable {</span>
+<span class="cstat-no" title="statement not covered" >        revert("RoyaltyRejectingReceiver: I refuse ETH")</span>;
+    }
+}
+&nbsp;
+/**
+ * @notice 重入提现的版税收款方：收到版税的瞬间，再调一次 withdrawRoyalties()
+ *
+ * 与 ReenteringFeeReceiver 的区别：
+ *   withdrawRoyalties 没有 onlyOwner，任何被指定为版税接收者的地址都能调用，
+ *   所以这里不需要"先把 owner 转移给合约"这道手续，攻击面反而更直接 ——
+ *   这也说明【开放给任意人的提现函数，锁的价值更大】。
+ *
+ * 期望结果：
+ *   1. 重入被 nonReentrant 挡下，返回 ReentrancyGuardReentrantCall
+ *   2. 外层正常提现不受影响，钱照常到账
+ */
+contract ReenteringRoyaltyReceiver {
+    /// @notice 目标市场
+    SimpleMarket public market;
+&nbsp;
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+&nbsp;
+    /// @notice 重入失败时返回的 revert 数据
+    bytes public reentryRevertData;
+&nbsp;
+    /// @notice 收到的版税总额
+    uint256 public received;
+&nbsp;
+    constructor(address marketAddr) {
+        market = SimpleMarket(marketAddr);
+    }
+&nbsp;
+    /// @notice 提取属于自己的版税（触发 receive → 重入）
+    function withdraw() external {
+        market.withdrawRoyalties();
+    }
+&nbsp;
+    /// @dev 收到版税的瞬间尝试再提一次。用低级 call，失败也不影响外层交易
+    receive() external payable {
+        received += msg.value;
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature("withdrawRoyalties()")
+        );
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+            reentrySucceeded = true;
+        } else {
+            reentryRevertData = data;
+        }
+    }
+}
+&nbsp;
+/**
+ * @notice 拒收 ETH 的出价者：能正常出价，但任何打给它的 ETH 都会 revert
+ *
+ * 它要验的是两条不同的路径：
+ *   1. 自己 withdrawOffer  → 市场 revert EthTransferFailed（整体回滚）
+ *      这是合理的：调用者就是收款人，回滚后钱仍记在它的出价里，随时可重试
+ *   2. 持有者 rejectOffer  → 市场【不能】revert，必须把钱转入 pendingWithdrawals
+ *      否则一个拒收者就能让持有者永远拒绝不了任何出价（DoS）
+ *
+ * 它同时是 IERC721Receiver：万一持有者接受它的出价，它能正常收下 NFT，
+ * 这样"恶意出价者不阻塞成交"才有被验证的余地。
+ */
+contract RejectingOfferBidder is IERC721Receiver {
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+&nbsp;
+    /// @notice 累计出价额
+    uint256 public offered;
+&nbsp;
+    /// @notice 是否收到了 NFT
+    bool public gotNft;
+&nbsp;
+    /// @notice 拒收开关：true = 拒收一切 ETH，false = 正常接收
+    ///         有了它，同一个 mock 就能把"退回失败 → 入待领池 → 改过自新 → 领回"整条链路跑完
+    bool public rejectEth = true;
+&nbsp;
+    /// @notice 重入探针结果：收到钱的瞬间再调一次 withdrawOffer / withdrawPendingFunds
+    ///         两个都期望失败 —— 锁还在生效，错误是 ReentrancyGuardReentrantCall
+    bool public withdrawReentrySucceeded;
+    bytes public withdrawReentryRevertData;
+    bool public pendingReentrySucceeded;
+    bytes public pendingReentryRevertData;
+&nbsp;
+    function setRejectEth(bool rejectEth_) external {
+        rejectEth = rejectEth_;
+    }
+&nbsp;
+    /// @notice 出价：把随交易带来的 ETH 原样转给市场
+    function makeOffer(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        offered += msg.value;
+        market.makeOffer{value: msg.value}(nftAddr, tokenId_);
+    }
+&nbsp;
+    /// @notice 尝试自己取回出价 —— 拒收期间这笔调用必然失败
+    function withdrawOffer() external {
+        market.withdrawOffer(nft, tokenId);
+    }
+&nbsp;
+    /// @notice 从待领池领钱（拒收期间会失败；关掉拒收后应成功）
+    function claimPending() external {
+        market.withdrawPendingFunds();
+    }
+&nbsp;
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        returns (bytes4)
+    {
+        gotNft = true;
+        return IERC721Receiver.onERC721Received.selector;
+    }
+&nbsp;
+    /// @dev 重入探针：用低级 call，失败也不影响外层交易
+    function _probe(bytes memory callData, bool isPending) internal {
+        (bool ok, bytes memory data) = address(market).call(callData);
+        if (isPending) {
+            <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+                pendingReentrySucceeded = true;
+            } else {
+                pendingReentryRevertData = data;
+            }
+        } else {
+            <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+                withdrawReentrySucceeded = true;
+            } else {
+                withdrawReentryRevertData = data;
+            }
+        }
+    }
+&nbsp;
+    /// @dev 拒收开关打开时拒收一切 ETH；关掉后，收钱的同时重入一次
+    receive() external payable {
+        if (rejectEth) {
+            revert("RejectingOfferBidder: I refuse ETH");
+        }
+        <span class="missing-if-branch" title="else path not taken" >E</span>if (nft != address(0)) {
+            _probe(
+                abi.encodeWithSignature("withdrawOffer(address,uint256)", nft, tokenId),
+                false
+            );
+            _probe(abi.encodeWithSignature("withdrawPendingFunds()"), true);
+        }
+    }
+}
+&nbsp;
+/**
+ * @notice 在 onERC721Received 回调里重入 acceptOffer 的恶意出价者
+ *
+ * 攻击路径：
+ *   持有者 acceptOffer → _settleSale → safeTransferFrom(持有者 → 本合约)
+ *   → ERC721 回调 onERC721Received → 本合约再次调用 acceptOffer
+ *
+ * 期望结果（两道防线都要验）：
+ *   1. 重入被 nonReentrant 挡下，错误是 ReentrancyGuardReentrantCall
+ *      —— 锁在修饰符里，比函数体的任何检查都先执行，所以拿到的是锁而不是 NoActiveOffer
+ *   2. 外层那笔正常成交照常完成：NFT 到手、卖家收到钱
+ *
+ * 与 ReentrancyProbe 的区别：那边重入的是 buy（挂单路径），
+ * 这边重入的是 acceptOffer（出价路径），验证新功能继承了同样的防护强度。
+ */
+contract ReenteringOfferBidder is IERC721Receiver {
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+&nbsp;
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+&nbsp;
+    /// @notice 重入失败时返回的 revert 数据（前 4 字节是错误选择器）
+    bytes public reentryRevertData;
+&nbsp;
+    /// @notice 顺手再重入一次 rejectOffer 的结果 —— 同样期望被锁挡下
+    ///         此刻 NFT 已经归本合约所有（ownerOf 在回调前就已更新），
+    ///         身份检查是过得去的，唯一挡得住它的只有那把锁
+    bool public rejectReentrySucceeded;
+    bytes public rejectReentryRevertData;
+&nbsp;
+    /// @notice 出价：把随交易带来的 ETH 原样转给市场
+    function makeOffer(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        market.makeOffer{value: msg.value}(nftAddr, tokenId_);
+    }
+&nbsp;
+    /// @dev 收到 NFT 的瞬间重入 acceptOffer。用低级 call：失败也不影响外层交易
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        returns (bytes4)
+    {
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature(
+                "acceptOffer(address,uint256,address)",
+                nft,
+                tokenId,
+                address(this)
+            )
+        );
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+            reentrySucceeded = true; // 走到这里说明市场被打穿了
+        } else {
+            reentryRevertData = data; // 把失败原因存下来供测试断言
+        }
+&nbsp;
+        // 同一次回调里再试一次 rejectOffer：此刻 NFT 已归本合约所有，身份检查是过得去的，
+        // 也就是说没有锁的话这次调用真能改状态 —— 所以锁必须把它也挡下来
+        (bool rejectOk, bytes memory rejectData) = address(market).call(
+            abi.encodeWithSignature(
+                "rejectOffer(address,uint256,address)",
+                nft,
+                tokenId,
+                address(this)
+            )
+        );
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (rejectOk) {
+            rejectReentrySucceeded = true;
+        } else {
+            rejectReentryRevertData = rejectData;
+        }
+        return IERC721Receiver.onERC721Received.selector;
+    }
+&nbsp;
+    /// @dev 能接收退款
+    receive() external payable {}
+}
+&nbsp;
+/**
+ * @notice 专测 fulfillListing（EIP-712 链下签名成交）的恶意买家
+ *
+ * 为什么不能复用 RefundRejectingBuyer：
+ *   那个合约调的是 market.buy()，走的是「链上挂单」这条入口。
+ *   fulfillListing 是另一条完全独立的成交入口（跳过 list() 直接成交），
+ *   它有自己的退款分支与重入窗口，必须单独拿一个探针去打。
+ *
+ * 两个开关，一个合约覆盖两条分支：
+ *   rejectEth = true → 拒收 ETH：验证「多付的钱退不回去时，整笔成交必须回滚」
+ *   reenter   = true → 收 NFT 的瞬间重入 fulfillListing：验证 nonReentrant 锁
+ *
+ * 这里刻意不在 onERC721Received 里让重入失败冒泡：
+ *   真实攻击者就是这样「吞掉失败、继续完成交易」的，
+ *   我们正是要靠这种方式观察锁到底有没有生效，而不是被 revert 掩盖掉。
+ */
+contract FulfillListingProbe is IERC721Receiver {
+    SimpleMarket public market;
+&nbsp;
+    bool public rejectEth;
+    bool public reenter;
+&nbsp;
+    /// @dev 重入时要原样复用的成交参数
+    SimpleMarket.ListingIntent public intent;
+    address public seller;
+    bytes public signature;
+&nbsp;
+    bool public receivedNft;
+    bool public reentrySucceeded;
+    bytes public reentryRevertData;
+&nbsp;
+    constructor(bool rejectEth_, bool reenter_) {
+        rejectEth = rejectEth_;
+        reenter = reenter_;
+    }
+&nbsp;
+    function attack(
+        address marketAddr,
+        SimpleMarket.ListingIntent calldata intent_,
+        address seller_,
+        bytes calldata signature_
+    ) external payable {
+        market = SimpleMarket(marketAddr);
+        intent = intent_;
+        seller = seller_;
+        signature = signature_;
+        market.fulfillListing{value: msg.value}(intent_, seller_, signature_);
+    }
+&nbsp;
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        returns (bytes4)
+    {
+        receivedNft = true;
+&nbsp;
+        if (reenter) {
+            bytes memory callData = abi.encodeWithSelector(
+                SimpleMarket.fulfillListing.selector,
+                intent,
+                seller,
+                signature
+            );
+            // 用合约当前余额再打一次同一笔成交：若锁失效，这里会成功
+            (bool ok, bytes memory data) = address(market).call{value: address(this).balance}(
+                callData
+            );
+            <span class="missing-if-branch" title="if path not taken" >I</span>if (ok) {
+                reentrySucceeded = true; // 走到这里说明市场被打穿了
+            } else {
+                reentryRevertData = data; // 把失败原因存下来供测试断言
+            }
+        }
+&nbsp;
+        return IERC721Receiver.onERC721Received.selector;
+    }
+&nbsp;
+    /// @dev rejectEth 打开时拒收一切 ETH，用于逼出退款失败分支
+    receive() external payable {
+        if (rejectEth) revert("FulfillListingProbe: I refuse ETH");
+    }
+}
+&nbsp;</pre></td></tr>
+</table></pre>
+<div class='push'></div><!-- for sticky footer -->
+</div><!-- /wrapper -->
+<div class='footer quiet pad2 space-top1 center small'>
+  Code coverage
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Sat Sep 05 2026 19:21:44 GMT+0800 (中国标准时间)
+</div>
+</div>
+<script src="../../prettify.js"></script>
+<script>
+window.onload = function () {
+        if (typeof prettyPrint === 'function') {
+            prettyPrint();
+        }
+};
+</script>
+<script src="../../sorter.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "network": "hardhat",
+  "chainId": 31337,
+  "contract": "MyNFT",
+  "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "initialOwner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "maxSupply": "10000",
+  "royaltyReceiver": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "royaltyFeeNumerator": 500,
+  "royaltyDenominator": 10000,
+  "royaltyPercent": "5.00%",
+  "txHash": "0xe69ef4469f44f22d208299ecabe70dafc0d5f72acd3b178bacfdadd85e4f1fe7",
+  "blockNumber": 1,
+  "gasUsed": "1992710",
+  "deployedAt": "2026-09-02T09:26:51.322Z"
+}

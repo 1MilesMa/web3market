@@ -1,0 +1,19 @@
+{
+  "contract": "SimpleMarket",
+  "address": "0x71450D767f2b83722b88164316d7308DB20A39c8",
+  "network": "sepolia",
+  "chainId": "11155111",
+  "owner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "feeBps": 250,
+  "deployedAt": "2026-09-04T03:58:20.202Z",
+  "blockNumber": 11631015,
+  "blockNumberSource": "由 eth_getCode 历史状态二分核实（11631014=0x / 11631015=有代码）",
+  "currentOwner": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+  "governance": {
+    "timelock": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+    "multisigOwner": "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
+    "minDelaySeconds": 300,
+    "note": "SimpleMarket 的 owner 已由部署者 EOA 移交 MarketTimelock；时间锁的 proposer/executor 为 MultiSigOwner 多签（3 owner / 阈值 2）。owner 字段保留部署时的历史值，实际权限以链上 owner() 为准。"
+  }
+}

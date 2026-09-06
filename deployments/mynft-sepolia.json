@@ -1,0 +1,17 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "contract": "MyNFT",
+  "address": "0x9EFe00123a6A22d903D63E195B7E87Bf3622412e",
+  "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "initialOwner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "maxSupply": "10000",
+  "royaltyReceiver": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "royaltyFeeNumerator": 500,
+  "royaltyDenominator": 10000,
+  "royaltyPercent": "5.00%",
+  "txHash": "0x1890ac43500391cdc17d435680d493dc73fa06adb1bd51a943b89adf108a03db",
+  "blockNumber": 11631013,
+  "gasUsed": "2108841",
+  "deployedAt": "2026-09-04T03:57:55.029Z"
+}

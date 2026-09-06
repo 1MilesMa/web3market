@@ -1,0 +1,664 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {SimpleMarket} from "../SimpleMarket.sol";
+
+/**
+ * @title 测试用的恶意 / 异常合约
+ *
+ * 这些合约【仅用于单元测试】，绝不是要部署上线的东西。
+ * 它们的作用是模拟攻击者与异常场景，用来验证我们的市场合约是否真的扛得住。
+ *
+ * 安全领域的一条基本原则：
+ *   你不写攻击合约去打自己的合约，就永远不知道防线是否真的有效。
+ *   「看起来对」和「被攻击后仍然对」是两回事。
+ */
+
+/**
+ * @notice 恶意买家：收到 NFT 的瞬间尝试重入 buy()
+ *
+ * 攻击原理：
+ *   市场用 safeTransferFrom 把 NFT 转给买家时，如果买家是合约，
+ *   会回调它的 onERC721Received —— 这是一个免费的执行窗口。
+ *   攻击者在窗口里再次调用 buy()，试图在挂单状态还没更新时重复购买
+ *   （或者更狠的场景：把同一枚 NFT 反复卖给自己、反复套出 ETH）。
+ *
+ * 我们期望的结果：
+ *   市场的两道防线（先改状态 + nonReentrant）会让第二次 buy 失败，
+ *   reentrySucceeded 保持 false。
+ */
+contract MaliciousBuyer is IERC721Receiver {
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+    uint256 public price;
+
+    /// @notice 重入尝试次数
+    uint256 public reentryAttempts;
+
+    /// @notice 重入是否成功 —— 测试断言它必须为 false
+    bool public reentrySucceeded;
+
+    /// @notice 发起攻击：调用市场的 buy
+    function attack(address marketAddr, address nftAddr, uint256 tokenId_, uint256 price_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        price = price_;
+        market.buy{value: price_}(nftAddr, tokenId_);
+    }
+
+    /**
+     * @dev 收到 NFT 时的回调 —— 攻击窗口就在这里
+     *
+     * 用 try/catch 捕获失败：如果市场防护生效，重入的 buy 会 revert，
+     * 被 catch 住后我们照常返回正确的 selector，让外层交易继续完成。
+     * 这样测试才能走到最后去检查 reentrySucceeded == false。
+     */
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        reentryAttempts += 1;
+        // 尝试再次购买同一枚 NFT。若防护有效，这里必然失败
+        try market.buy{value: price}(nft, tokenId) {
+            reentrySucceeded = true; // 如果走到这里，说明市场被打穿了
+        } catch {
+            // 预期路径：被 nonReentrant 或 NotListed 挡下
+        }
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /// @dev 能接收退款
+    receive() external payable {}
+}
+
+/**
+ * @notice 拒绝收款的卖家：用来验证「钱货两清」的原子性
+ *
+ * 场景：卖家是一个合约，且它的 receive 会 revert（可能是被恶意设计，
+ *      也可能是多签钱包配置错误、fallback 太复杂导致 gas 不够等）。
+ *
+ * 我们期望的结果：
+ *   市场给卖家打款失败 → 整笔交易 revert → NFT 也不转移、挂单仍有效。
+ *   绝不能出现「NFT 已经给了买家，但卖家没收到钱」这种单方面损失。
+ *   这就是原子性：要么全成功，要么全回滚。
+ */
+contract RejectingSeller is IERC721Receiver {
+    /// @notice 是否拒绝接收 ETH
+    bool public rejectEth;
+
+    constructor(bool rejectEth_) {
+        rejectEth = rejectEth_;
+    }
+
+    /// @dev 挂单：先授权市场，再挂单。必须由本合约持有 NFT 时调用
+    function listOnMarket(address marketAddr, address nftAddr, uint256 tokenId_, uint256 price_) external {
+        IERC721(nftAddr).approve(marketAddr, tokenId_);
+        SimpleMarket(marketAddr).list(nftAddr, tokenId_, price_);
+    }
+
+    /// @dev 正常接收 NFT（否则挂单前的铸造都无法完成）
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /// @dev 收 ETH 时按配置拒绝 —— 这里是触发回滚的关键
+    receive() external payable {
+        if (rejectEth) {
+            revert("RejectingSeller: I refuse ETH");
+        }
+    }
+}
+
+/**
+ * @notice 拒收退款的买家：能正常接收 NFT，但收不进任何 ETH
+ *
+ * 场景：买家多付了 ETH（前端估算偏差、抢单时多给），市场在成交末尾会把
+ *      多出来的部分退回去。如果这个买家是个"只进不出"的合约 ——
+ *      它的 receive 直接 revert —— 退款就会失败。
+ *
+ * 这个合约覆盖的是 buy() 里的最后一道分支：
+ *      uint256 excess = msg.value - price;
+ *      if (excess > 0) {
+ *          (bool refundOk, ) = payable(msg.sender).call{value: excess}("");
+ *          if (!refundOk) revert EthTransferFailed();   // ← 本合约要打的就是这里
+ *      }
+ *
+ * 我们要验证两件事：
+ *   1. 退款失败必须 revert EthTransferFailed（而不是默默吞掉多付的钱，
+ *      也不是让买家白拿 NFT）；
+ *   2. 整笔交易原子回滚 —— NFT 回到卖家手上、挂单依然有效、买家没收到 NFT。
+ *
+ * 注意它与 RejectingSeller 的区别：
+ *   RejectingSeller 卡的是"给卖家打款"这一步（发生在转 NFT 之后），
+ *   本合约卡的是"给买家退款"这一步（发生在最后）。
+ *   两步都必须触发整体回滚，缺一不可测。
+ *
+ * 为什么它必须正确实现 onERC721Received？
+ *   因为市场转 NFT 用的是 safeTransferFrom。如果本合约不返回正确的 selector，
+ *   交易会在转 NFT 那一步就失败，根本走不到退款分支，测不到我们想测的东西。
+ */
+contract RefundRejectingBuyer is IERC721Receiver {
+    /// @notice 本次攻击的目标市场
+    SimpleMarket public market;
+
+    /// @notice 目标 NFT 合约与编号（留档，便于在测试中回读）
+    address public nft;
+    uint256 public tokenId;
+
+    /// @notice 是否真的收到过 NFT。整笔回滚后它必然是 false
+    bool public receivedNft;
+
+    /**
+     * @notice 发起购买：把调用者给的 ETH 原样转发给 buy
+     *
+     * 调用方要带 value = price + 多付部分，且必须严格大于 price，
+     * 否则 buy 里的 if (excess > 0) 走不进去，测不到退款分支。
+     */
+    function attack(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        market.buy{value: msg.value}(nftAddr, tokenId_);
+    }
+
+    /// @dev 正常接收 NFT（必须返回 selector，否则进不到退款那一步）
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        receivedNft = true;
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /// @dev 一分钱 ETH 都不收 —— 退款必然失败
+    receive() external payable {
+        revert("RefundRejectingBuyer: I refuse ETH");
+    }
+
+    /// @dev fallback 也堵死，避免有人用带数据的 call 绕过 receive
+    fallback() external payable {
+        revert("RefundRejectingBuyer: I refuse ETH");
+    }
+}
+
+/**
+ * @notice 拒收 ETH 的收款地址：专门用来卡 withdrawFees 的打款分支
+ *
+ * 场景：owner 调用 withdrawFees(to) 提取手续费，但 to 是一个拒绝收款的合约。
+ *      市场里那行代码是：
+ *          (bool ok, ) = payable(to).call{value: amount}("");
+ *          if (!ok) revert EthTransferFailed();   // ← 本合约要打的就是这里
+ *
+ * 期望行为：
+ *   1. 交易 revert EthTransferFailed；
+ *   2. accumulatedFees【不能被清零】 —— accumulatedFees = 0 虽然写在转账之前
+ *      （先改状态再转账，防重入的标准写法），但整笔回滚会让状态一起复原，
+ *      钱依然记在市场账上，owner 换个地址还能再取。
+ *      这种"失败即全额复原"正是我们要验证的原子性。
+ */
+contract EthRejectingReceiver {
+    /// @notice 是否真的收到过 ETH。交易回滚后必然是 false
+    bool public gotEth;
+
+    /// @dev 收 ETH 一律拒绝
+    receive() external payable {
+        gotEth = true; // 这一行会随下面的 revert 一起回滚，实际永远是 false
+        revert("EthRejectingReceiver: I refuse ETH");
+    }
+
+    /// @dev fallback 同样拒绝
+    fallback() external payable {
+        revert("EthRejectingReceiver: I refuse ETH");
+    }
+}
+
+/**
+ * @notice 重入探针：不只是"重入失败"，还要把失败原因带回来
+ *
+ * 与 MaliciousBuyer 的区别：
+ *   MaliciousBuyer 用 try/catch 吞掉了重入的失败原因，只能证明"没成功"；
+ *   本合约用低级 call 把 revert 数据原样存下来，于是我们能【断言失败原因本身】。
+ *
+ * 这一点很重要：重入被挡下的原因必须是我们预期的那个
+ * （ReentrancyGuardReentrantCall，来自 nonReentrant 修饰符），
+ * 而不是碰巧因为别的检查（比如挂单已失效 NotListed）而失败。
+ * 只有确认了原因，才能说"nonReentrant 这道防线真的起作用了"。
+ *
+ * 顺带它还能把 ReentrancyGuard 那条 modifier 分支真正跑一遍 ——
+ * 修饰符的 revert 分支平时极难被覆盖，必须有人在回调里重入才能打到。
+ */
+contract ReentrancyProbe is IERC721Receiver {
+    /// @notice 目标市场 / NFT / 编号 / 出价
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+    uint256 public price;
+
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+
+    /// @notice 重入失败时返回的 revert 数据（前 4 字节就是错误选择器）
+    bytes public reentryRevertData;
+
+    /// @dev 正常接收 NFT（否则走不到重入那一步）
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external returns (bytes4) {
+        // 用低级 call 重入 buy，这样即使失败也不会中断外层交易
+        (bool ok, bytes memory data) = address(market).call{value: price}(
+            abi.encodeWithSignature("buy(address,uint256)", nft, tokenId)
+        );
+        if (ok) {
+            reentrySucceeded = true; // 走到这里说明市场被打穿了
+        } else {
+            reentryRevertData = data; // 把失败原因存下来供测试断言
+        }
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /// @notice 发起购买
+    function attack(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        price = msg.value;
+        market.buy{value: msg.value}(nftAddr, tokenId_);
+    }
+
+    /// @dev 能接收退款
+    receive() external payable {}
+}
+
+/**
+ * @notice 重入提现的收款方：在收到手续费的瞬间，再调一次 withdrawFees
+ *
+ * 场景：owner 把手续费提到某个合约地址，该合约的 receive 里又去调 withdrawFees，
+ *      试图再套一次钱（此时 accumulatedFees 已经被清零，但攻击者的思路就是
+ *      赌"状态还没更新"或者能绕过锁）。
+ *
+ * 期望结果：
+ *   1. 重入调用被 nonReentrant 挡下，返回 ReentrancyGuardReentrantCall；
+ *   2. 外层那笔正常提现不受影响，钱照常到账。
+ *
+ * 这个合约的作用是覆盖 withdrawFees 上 nonReentrant 修饰符的 revert 分支 ——
+ * 修饰符分支只有在"真的有人重入"时才会被执行到，平时永远走不到。
+ */
+contract ReenteringFeeReceiver {
+    /// @notice 目标市场
+    SimpleMarket public market;
+
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+
+    /// @notice 重入失败时返回的 revert 数据
+    bytes public reentryRevertData;
+
+    constructor(address marketAddr) {
+        market = SimpleMarket(marketAddr);
+    }
+
+    /// @dev 收到手续费的瞬间尝试再提一次。用低级 call，失败也不影响外层交易
+    receive() external payable {
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature("withdrawFees(address)", address(this))
+        );
+        if (ok) {
+            reentrySucceeded = true;
+        } else {
+            reentryRevertData = data;
+        }
+    }
+}
+
+/**
+ * @notice 会重入的 owner：专门用来打 withdrawFees 上 nonReentrant 那条分支
+ *
+ * 为什么需要这个合约：
+ *   withdrawFees 的修饰符顺序是 onlyOwner → nonReentrant。
+ *   普通收款方重入时，第一个修饰符 onlyOwner 就把它挡了（拿到的是
+ *   OwnableUnauthorizedAccount），根本轮不到锁出场。
+ *   要让 nonReentrant 的 revert 分支真正被执行，重入者必须是 owner 本人。
+ *   于是我们把 owner 转移给这个合约，让它在收到提现款的瞬间再提一次。
+ *
+ * 期望结果：
+ *   owner 自己重入也会被那把锁挡下 —— 这正是"锁不看身份，只看状态"的含义。
+ */
+contract ReenteringOwner {
+    /// @notice 目标市场
+    SimpleMarket public market;
+
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+
+    /// @notice 重入失败时返回的 revert 数据
+    bytes public reentryRevertData;
+
+    constructor(address marketAddr) {
+        market = SimpleMarket(marketAddr);
+    }
+
+    /// @notice 以 owner 身份发起提现（本合约已被转移为 market 的 owner）
+    /// @param to 提现收款地址，传本合约自己才能在 receive 里触发重入
+    function drain(address to) external {
+        market.withdrawFees(to);
+    }
+
+    /// @dev 收到提现款的瞬间，以 owner 身份再提一次
+    receive() external payable {
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature("withdrawFees(address)", address(this))
+        );
+        if (ok) {
+            reentrySucceeded = true;
+        } else {
+            reentryRevertData = data;
+        }
+    }
+}
+
+/* ==========================================================================
+ * 以下三个是 EIP-2981（版税）专项测试用的合约
+ * ==========================================================================
+ */
+
+/**
+ * @notice 普通 ERC721 合集：故意【不】继承 ERC2981
+ *
+ * 用途：验证市场合约的"优雅降级"。
+ * 现实背景：2021 年 EIP-2981 定稿前部署的 NFT（CryptoPunks、早期藏品）都没有
+ * royaltyInfo 函数。市场如果无脑调用 IERC2981(nft).royaltyInfo(...)，
+ * 会因为没有这个函数而 revert，结果是这些 NFT 在本市场【根本卖不掉】。
+ *
+ * 正确做法（市场里已实现）：先 IERC165.supportsInterface(0x2a55205a)，
+ * 返回 false 就直接跳过版税。本合约 supportsInterface(0x2a55205a) 返回 false，
+ * 因为 ERC721 基础实现只认 ERC721 / ERC721Metadata / ERC165 三个 id。
+ */
+contract PlainERC721 is ERC721 {
+    uint256 private _nextId = 1;
+
+    constructor() ERC721("PlainNFT", "PNFT") {}
+
+    /// @notice 无门槛铸造，方便测试随意造 NFT
+    function mint(address to) external returns (uint256 tokenId) {
+        tokenId = _nextId++;
+        _safeMint(to, tokenId);
+    }
+}
+
+/**
+ * @notice 拒收 ETH 的版税收款方
+ *
+ * 用途：验证 Pull Payment 的核心价值 —— 版税收款方出问题，只影响它自己提现，
+ * 【不】影响成交。
+ *
+ * 对照实验（本合约存在的意义）：
+ *   若市场写成 push（buy 里直接给 receiver 转账）：
+ *       receiver 拒收 → buy 整体 revert → 卖家卖不掉、买家买不到，
+ *       一个跟交易无关的第三方把整条链路拖死（DoS）
+ *   写成 pull（现在的做法）：
+ *       成交照常成功，版税只是记在 pendingRoyalties 里；
+ *       receiver 什么时候能收，是它自己的事
+ */
+contract RoyaltyRejectingReceiver {
+    /// @notice 是否收到过 ETH —— 期望永远为 false（收到就 revert，状态被回滚）
+    bool public gotEth;
+
+    /// @notice 提现入口，供测试调用
+    function withdraw(address marketAddr) external {
+        SimpleMarket(marketAddr).withdrawRoyalties();
+    }
+
+    /// @dev 收到任何 ETH 都立刻回滚
+    receive() external payable {
+        gotEth = true;
+        revert("RoyaltyRejectingReceiver: I refuse ETH");
+    }
+
+    fallback() external payable {
+        revert("RoyaltyRejectingReceiver: I refuse ETH");
+    }
+}
+
+/**
+ * @notice 重入提现的版税收款方：收到版税的瞬间，再调一次 withdrawRoyalties()
+ *
+ * 与 ReenteringFeeReceiver 的区别：
+ *   withdrawRoyalties 没有 onlyOwner，任何被指定为版税接收者的地址都能调用，
+ *   所以这里不需要"先把 owner 转移给合约"这道手续，攻击面反而更直接 ——
+ *   这也说明【开放给任意人的提现函数，锁的价值更大】。
+ *
+ * 期望结果：
+ *   1. 重入被 nonReentrant 挡下，返回 ReentrancyGuardReentrantCall
+ *   2. 外层正常提现不受影响，钱照常到账
+ */
+contract ReenteringRoyaltyReceiver {
+    /// @notice 目标市场
+    SimpleMarket public market;
+
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+
+    /// @notice 重入失败时返回的 revert 数据
+    bytes public reentryRevertData;
+
+    /// @notice 收到的版税总额
+    uint256 public received;
+
+    constructor(address marketAddr) {
+        market = SimpleMarket(marketAddr);
+    }
+
+    /// @notice 提取属于自己的版税（触发 receive → 重入）
+    function withdraw() external {
+        market.withdrawRoyalties();
+    }
+
+    /// @dev 收到版税的瞬间尝试再提一次。用低级 call，失败也不影响外层交易
+    receive() external payable {
+        received += msg.value;
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature("withdrawRoyalties()")
+        );
+        if (ok) {
+            reentrySucceeded = true;
+        } else {
+            reentryRevertData = data;
+        }
+    }
+}
+
+/**
+ * @notice 拒收 ETH 的出价者：能正常出价，但任何打给它的 ETH 都会 revert
+ *
+ * 它要验的是两条不同的路径：
+ *   1. 自己 withdrawOffer  → 市场 revert EthTransferFailed（整体回滚）
+ *      这是合理的：调用者就是收款人，回滚后钱仍记在它的出价里，随时可重试
+ *   2. 持有者 rejectOffer  → 市场【不能】revert，必须把钱转入 pendingWithdrawals
+ *      否则一个拒收者就能让持有者永远拒绝不了任何出价（DoS）
+ *
+ * 它同时是 IERC721Receiver：万一持有者接受它的出价，它能正常收下 NFT，
+ * 这样"恶意出价者不阻塞成交"才有被验证的余地。
+ */
+contract RejectingOfferBidder is IERC721Receiver {
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+
+    /// @notice 累计出价额
+    uint256 public offered;
+
+    /// @notice 是否收到了 NFT
+    bool public gotNft;
+
+    /// @notice 拒收开关：true = 拒收一切 ETH，false = 正常接收
+    ///         有了它，同一个 mock 就能把"退回失败 → 入待领池 → 改过自新 → 领回"整条链路跑完
+    bool public rejectEth = true;
+
+    /// @notice 重入探针结果：收到钱的瞬间再调一次 withdrawOffer / withdrawPendingFunds
+    ///         两个都期望失败 —— 锁还在生效，错误是 ReentrancyGuardReentrantCall
+    bool public withdrawReentrySucceeded;
+    bytes public withdrawReentryRevertData;
+    bool public pendingReentrySucceeded;
+    bytes public pendingReentryRevertData;
+
+    function setRejectEth(bool rejectEth_) external {
+        rejectEth = rejectEth_;
+    }
+
+    /// @notice 出价：把随交易带来的 ETH 原样转给市场
+    function makeOffer(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        offered += msg.value;
+        market.makeOffer{value: msg.value}(nftAddr, tokenId_);
+    }
+
+    /// @notice 尝试自己取回出价 —— 拒收期间这笔调用必然失败
+    function withdrawOffer() external {
+        market.withdrawOffer(nft, tokenId);
+    }
+
+    /// @notice 从待领池领钱（拒收期间会失败；关掉拒收后应成功）
+    function claimPending() external {
+        market.withdrawPendingFunds();
+    }
+
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        returns (bytes4)
+    {
+        gotNft = true;
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /// @dev 重入探针：用低级 call，失败也不影响外层交易
+    function _probe(bytes memory callData, bool isPending) internal {
+        (bool ok, bytes memory data) = address(market).call(callData);
+        if (isPending) {
+            if (ok) {
+                pendingReentrySucceeded = true;
+            } else {
+                pendingReentryRevertData = data;
+            }
+        } else {
+            if (ok) {
+                withdrawReentrySucceeded = true;
+            } else {
+                withdrawReentryRevertData = data;
+            }
+        }
+    }
+
+    /// @dev 拒收开关打开时拒收一切 ETH；关掉后，收钱的同时重入一次
+    receive() external payable {
+        if (rejectEth) {
+            revert("RejectingOfferBidder: I refuse ETH");
+        }
+        if (nft != address(0)) {
+            _probe(
+                abi.encodeWithSignature("withdrawOffer(address,uint256)", nft, tokenId),
+                false
+            );
+            _probe(abi.encodeWithSignature("withdrawPendingFunds()"), true);
+        }
+    }
+}
+
+/**
+ * @notice 在 onERC721Received 回调里重入 acceptOffer 的恶意出价者
+ *
+ * 攻击路径：
+ *   持有者 acceptOffer → _settleSale → safeTransferFrom(持有者 → 本合约)
+ *   → ERC721 回调 onERC721Received → 本合约再次调用 acceptOffer
+ *
+ * 期望结果（两道防线都要验）：
+ *   1. 重入被 nonReentrant 挡下，错误是 ReentrancyGuardReentrantCall
+ *      —— 锁在修饰符里，比函数体的任何检查都先执行，所以拿到的是锁而不是 NoActiveOffer
+ *   2. 外层那笔正常成交照常完成：NFT 到手、卖家收到钱
+ *
+ * 与 ReentrancyProbe 的区别：那边重入的是 buy（挂单路径），
+ * 这边重入的是 acceptOffer（出价路径），验证新功能继承了同样的防护强度。
+ */
+contract ReenteringOfferBidder is IERC721Receiver {
+    SimpleMarket public market;
+    address public nft;
+    uint256 public tokenId;
+
+    /// @notice 重入是否成功 —— 期望永远为 false
+    bool public reentrySucceeded;
+
+    /// @notice 重入失败时返回的 revert 数据（前 4 字节是错误选择器）
+    bytes public reentryRevertData;
+
+    /// @notice 顺手再重入一次 rejectOffer 的结果 —— 同样期望被锁挡下
+    ///         此刻 NFT 已经归本合约所有（ownerOf 在回调前就已更新），
+    ///         身份检查是过得去的，唯一挡得住它的只有那把锁
+    bool public rejectReentrySucceeded;
+    bytes public rejectReentryRevertData;
+
+    /// @notice 出价：把随交易带来的 ETH 原样转给市场
+    function makeOffer(address marketAddr, address nftAddr, uint256 tokenId_) external payable {
+        market = SimpleMarket(marketAddr);
+        nft = nftAddr;
+        tokenId = tokenId_;
+        market.makeOffer{value: msg.value}(nftAddr, tokenId_);
+    }
+
+    /// @dev 收到 NFT 的瞬间重入 acceptOffer。用低级 call：失败也不影响外层交易
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        returns (bytes4)
+    {
+        (bool ok, bytes memory data) = address(market).call(
+            abi.encodeWithSignature(
+                "acceptOffer(address,uint256,address)",
+                nft,
+                tokenId,
+                address(this)
+            )
+        );
+        if (ok) {
+            reentrySucceeded = true; // 走到这里说明市场被打穿了
+        } else {
+            reentryRevertData = data; // 把失败原因存下来供测试断言
+        }
+
+        // 同一次回调里再试一次 rejectOffer：此刻 NFT 已归本合约所有，身份检查是过得去的，
+        // 也就是说没有锁的话这次调用真能改状态 —— 所以锁必须把它也挡下来
+        (bool rejectOk, bytes memory rejectData) = address(market).call(
+            abi.encodeWithSignature(
+                "rejectOffer(address,uint256,address)",
+                nft,
+                tokenId,
+                address(this)
+            )
+        );
+        if (rejectOk) {
+            rejectReentrySucceeded = true;
+        } else {
+            rejectReentryRevertData = rejectData;
+        }
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
+    /// @dev 能接收退款
+    receive() external payable {}
+}

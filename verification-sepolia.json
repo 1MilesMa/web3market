@@ -1,0 +1,16 @@
+{
+  "contract": "0x07f6736520685181c22bd0B58714C7a30B92bb3a",
+  "txHash": "0xaca0b32b50192473acf7546e3828bcaef0227ab7b2e08344484c13e6633f28ed",
+  "writeTxHash": "0x6c2828798148e91ebe63a1922cd815c2fa8392a868f02089b609fd6799639ec8",
+  "owner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "messageAfterWrite": "Sepolia 写入验证 @2026-09-01T15:11:12.129Z",
+  "updateCount": "1",
+  "historyLength": "2",
+  "checks": {
+    "readMatch": true,
+    "countIncremented": true,
+    "historyIncremented": true,
+    "ownerCorrect": true
+  },
+  "verifiedAt": "2026-09-01T15:11:30.898Z"
+}

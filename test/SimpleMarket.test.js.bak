@@ -1,0 +1,1183 @@
+const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+
+/**
+ * SimpleMarket 测试套件
+ *
+ * 这份测试的重点不是"跑通功能"，而是把市场合约最容易翻车的几个点
+ * 全部变成可执行的断言：
+ *   1. 重入攻击         —— 真写一个攻击合约来打
+ *   2. 钱货两清原子性   —— 卖家收不到钱时，NFT 绝不能转移
+ *   3. 陈旧挂单         —— 挂单后 NFT 被转走的边界情况
+ *   4. 手续费与提现     —— 上限校验、权限、Pull Payment
+ *   5. 多余 ETH 退还    —— 精确到 wei，并扣除 gas
+ *
+ * 运行：npx hardhat test test/SimpleMarket.test.js
+ */
+
+describe("SimpleMarket", function () {
+  // --------------------------------------------------------------------------
+  // 常量
+  // --------------------------------------------------------------------------
+  const TOKEN_URI = "ipfs://QmTest123456789/metadata.json";
+  const FEE_BPS = 250; // 2.5%
+  const MAX_FEE_BPS = 1000; // 10%
+  const PRICE = ethers.parseEther("1"); // 挂单价 1 ETH
+
+  // 版税相关常量
+  const ROYALTY_BPS = 500; // 默认版税 5%
+  const TOKEN_ROYALTY_BPS = 1000; // 单枚 token 版税 10%
+  const INTERFACE_ID_ERC2981 = "0x2a55205a"; // IERC2981
+  const INTERFACE_ID_ERC721 = "0x80ac58cd";
+
+  // --------------------------------------------------------------------------
+  // 部署脚手架
+  // --------------------------------------------------------------------------
+  /**
+   * 主 fixture：MyNFT 部署时【不带版税】（版税接收者传零地址）。
+   * 这样既有的 50 个用例断言（卖家实得 = price - fee）保持原样不变，
+   * 版税相关的全部放在最后的「版税（EIP-2981）」分组里，用带版税的 fixture。
+   */
+  async function deployMarketFixture() {
+    const [owner, seller, buyer, other, creator] = await ethers.getSigners();
+
+    // 部署 NFT 合集（owner 可铸造，上限 10000，无版税）
+    const MyNFT = await ethers.getContractFactory("MyNFT");
+    const nft = await MyNFT.deploy(owner.address, 10000, ethers.ZeroAddress, 0);
+    const nftAddr = await nft.getAddress();
+
+    // 部署市场（owner 管理，手续费 2.5%）
+    const Market = await ethers.getContractFactory("SimpleMarket");
+    const market = await Market.deploy(owner.address, FEE_BPS);
+    const marketAddr = await market.getAddress();
+
+    // 铸造 tokenId #1 给 seller
+    await nft.connect(owner).safeMint(seller.address, TOKEN_URI);
+
+    return { owner, seller, buyer, other, creator, nft, nftAddr, market, marketAddr };
+  }
+
+  /**
+   * 版税 fixture：MyNFT 部署时带 5% 默认版税，接收者是 creator。
+   * 同时铸造 #1 和 #2 两枚给 seller，方便测试"按 tokenId 设置不同版税"。
+   */
+  async function deployRoyaltyFixture() {
+    const [owner, seller, buyer, other, creator] = await ethers.getSigners();
+
+    const MyNFT = await ethers.getContractFactory("MyNFT");
+    const nft = await MyNFT.deploy(owner.address, 10000, creator.address, ROYALTY_BPS);
+    const nftAddr = await nft.getAddress();
+
+    const Market = await ethers.getContractFactory("SimpleMarket");
+    const market = await Market.deploy(owner.address, FEE_BPS);
+    const marketAddr = await market.getAddress();
+
+    await nft.connect(owner).safeMint(seller.address, TOKEN_URI); // #1
+    await nft.connect(owner).safeMint(seller.address, TOKEN_URI); // #2
+
+    return { owner, seller, buyer, other, creator, nft, nftAddr, market, marketAddr };
+  }
+
+  /** 便捷：seller 授权市场并挂单 #1 */
+  async function listTokenOne(market, marketAddr, nft, seller, price) {
+    await nft.connect(seller).approve(marketAddr, 1);
+    await market.connect(seller).list(nft, 1, price);
+  }
+
+  // ==========================================================================
+  // 一、部署与初始状态
+  // ==========================================================================
+  describe("部署与初始状态", function () {
+    it("owner 应正确设置", async function () {
+      const { owner, market } = await loadFixture(deployMarketFixture);
+      expect(await market.owner()).to.equal(owner.address);
+    });
+
+    it("初始手续费应为构造时传入的 250 bps（2.5%）", async function () {
+      const { market } = await loadFixture(deployMarketFixture);
+      expect(await market.feeBps()).to.equal(FEE_BPS);
+    });
+
+    it("MAX_FEE_BPS 应为 1000（10%）", async function () {
+      const { market } = await loadFixture(deployMarketFixture);
+      expect(await market.MAX_FEE_BPS()).to.equal(MAX_FEE_BPS);
+    });
+
+    it("初始待提取手续费与合约余额均为 0", async function () {
+      const { market, marketAddr } = await loadFixture(deployMarketFixture);
+      expect(await market.accumulatedFees()).to.equal(0);
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(0);
+    });
+
+    it("构造时手续费超过上限应 revert FeeTooHigh", async function () {
+      const { owner, market } = await loadFixture(deployMarketFixture);
+      const Market = await ethers.getContractFactory("SimpleMarket");
+      await expect(Market.deploy(owner.address, 1001)).to.be.revertedWithCustomError(
+        market,
+        "FeeTooHigh"
+      );
+    });
+  });
+
+  // ==========================================================================
+  // 二、挂单（list）
+  // ==========================================================================
+  describe("挂单", function () {
+    it("持有且已授权时应挂单成功，并发出 Listed 事件", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+
+      await nft.connect(seller).approve(marketAddr, 1);
+
+      await expect(market.connect(seller).list(nftAddr, 1, PRICE))
+        .to.emit(market, "Listed")
+        .withArgs(nftAddr, 1, seller.address, PRICE);
+
+      const [s, p, active] = await market.getListing(nftAddr, 1);
+      expect(s).to.equal(seller.address);
+      expect(p).to.equal(PRICE);
+      expect(active).to.equal(true);
+    });
+
+    it("挂单不应转移 NFT（授权式而非托管式）", async function () {
+      const { seller, nft, market, marketAddr } = await loadFixture(deployMarketFixture);
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      // NFT 仍在卖家手上，市场合约不持有它
+      expect(await nft.ownerOf(1)).to.equal(seller.address);
+      expect(await nft.balanceOf(marketAddr)).to.equal(0);
+    });
+
+    it("价格为 0 应 revert PriceMustBeGreaterThanZero", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+      await nft.connect(seller).approve(marketAddr, 1);
+
+      await expect(market.connect(seller).list(nftAddr, 1, 0)).to.be.revertedWithCustomError(
+        market,
+        "PriceMustBeGreaterThanZero"
+      );
+    });
+
+    it("非持有者挂单应 revert NotTokenOwner", async function () {
+      const { buyer, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+
+      // 注意：这里【不能】先让 buyer 执行 nft.approve(marketAddr, 1)。
+      // OpenZeppelin v5 收紧了 approve 的权限：只有 token 持有者、
+      // 或已被 setApprovalForAll 授权的 operator 才能调用，
+      // 无关第三方调用会直接 revert ERC721InvalidApprover（v4 时代是允许的）。
+      // 这正是本用例要验证的前提 —— 非持有者连授权都办不到。
+      await expect(nft.connect(buyer).approve(marketAddr, 1)).to.be.revertedWithCustomError(
+        nft,
+        "ERC721InvalidApprover"
+      );
+
+      await expect(market.connect(buyer).list(nftAddr, 1, PRICE)).to.be.revertedWithCustomError(
+        market,
+        "NotTokenOwner"
+      );
+    });
+
+    it("未授权市场时挂单应 revert MarketNotApproved", async function () {
+      const { seller, nftAddr, market } = await loadFixture(deployMarketFixture);
+      // 故意不调用 approve
+
+      await expect(market.connect(seller).list(nftAddr, 1, PRICE)).to.be.revertedWithCustomError(
+        market,
+        "MarketNotApproved"
+      );
+    });
+
+    it("使用 setApprovalForAll 全量授权也能挂单", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+
+      await nft.connect(seller).setApprovalForAll(marketAddr, true);
+      await expect(market.connect(seller).list(nftAddr, 1, PRICE))
+        .to.emit(market, "Listed")
+        .withArgs(nftAddr, 1, seller.address, PRICE);
+    });
+
+    it("重复挂单应 revert AlreadyListed", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      await expect(market.connect(seller).list(nftAddr, 1, PRICE)).to.be.revertedWithCustomError(
+        market,
+        "AlreadyListed"
+      );
+    });
+  });
+
+  // ==========================================================================
+  // 三、购买（buy）—— 核心路径
+  // ==========================================================================
+  describe("购买", function () {
+    it("购买成功：NFT 转给买家、卖家收到扣费后的金额、手续费入账", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      const expectedFee = (PRICE * BigInt(FEE_BPS)) / 10000n; // 0.025 ETH
+      const expectedProceeds = PRICE - expectedFee; // 0.975 ETH
+
+      // 卖家余额应增加 expectedProceeds（卖家不是交易发起者，不含 gas 干扰）
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE })).to.changeEtherBalance(
+        seller,
+        expectedProceeds
+      );
+
+      // 归属变更
+      expect(await nft.ownerOf(1)).to.equal(buyer.address);
+      expect(await nft.balanceOf(seller.address)).to.equal(0);
+
+      // 手续费累计（留在合约里等 owner 提，不直接转走）
+      expect(await market.accumulatedFees()).to.equal(expectedFee);
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(expectedFee);
+
+      // 挂单失效但不是"消失"
+      const [, , active] = await market.getListing(nftAddr, 1);
+      expect(active).to.equal(false);
+    });
+
+    it("购买成功应发出 Sold 事件（含买家与手续费）", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      const expectedFee = (PRICE * BigInt(FEE_BPS)) / 10000n;
+
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE }))
+        .to.emit(market, "Sold")
+        .withArgs(nftAddr, 1, seller.address, buyer.address, PRICE, expectedFee);
+    });
+
+    it("购买后授权应被清空（OZ v5 转移即清授权）", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      // 这就是你上一轮亲手验证过的行为：转移后 getApproved 归零
+      expect(await nft.getApproved(1)).to.equal(ethers.ZeroAddress);
+    });
+
+    it("多付的 ETH 应退还给买家（精确到 wei，已扣除 gas）", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      const overpay = ethers.parseEther("0.5");
+      const sent = PRICE + overpay;
+
+      const before = await ethers.provider.getBalance(buyer.address);
+      const tx = await market.connect(buyer).buy(nftAddr, 1, { value: sent });
+      const receipt = await tx.wait();
+      const gasCost = receipt.gasUsed * receipt.gasPrice;
+      const after = await ethers.provider.getBalance(buyer.address);
+
+      // 买家净支出应恰好等于挂单价，多付的 0.5 ETH 已退回
+      expect(before - after - gasCost).to.equal(PRICE);
+      // 合约里只留下手续费，没有吞掉多付的钱
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(
+        (PRICE * BigInt(FEE_BPS)) / 10000n
+      );
+    });
+
+    it("付款不足应 revert InsufficientPayment，并携带实付与应付金额", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      const short = ethers.parseEther("0.9");
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: short }))
+        .to.be.revertedWithCustomError(market, "InsufficientPayment")
+        .withArgs(short, PRICE);
+    });
+
+    it("购买未挂单的 NFT 应 revert NotListed", async function () {
+      const { buyer, nftAddr, market } = await loadFixture(deployMarketFixture);
+
+      await expect(
+        market.connect(buyer).buy(nftAddr, 1, { value: PRICE })
+      ).to.be.revertedWithCustomError(market, "NotListed");
+    });
+
+    it("同一枚 NFT 不能被购买两次（第二次 NotListed）", async function () {
+      const { seller, buyer, other, nft, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      await market.connect(buyer).buy(nft.target, 1, { value: PRICE });
+
+      // 另一个买家再买同一枚
+      await expect(
+        market.connect(other).buy(nft.target, 1, { value: PRICE })
+      ).to.be.revertedWithCustomError(market, "NotListed");
+    });
+
+    it("【陈旧挂单】卖家挂单后转走 NFT，购买应 revert StaleListing", async function () {
+      const { seller, buyer, other, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      // 卖家把 NFT 转给别人，挂单记录还在，但已经无法成交
+      await nft.connect(seller).transferFrom(seller.address, other.address, 1);
+
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE }))
+        .to.be.revertedWithCustomError(market, "StaleListing")
+        .withArgs(other.address, seller.address);
+    });
+
+    it("卖家撤销授权后，购买应失败（safeTransferFrom 会 reject）", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      // 撤销单枚授权
+      await nft.connect(seller).approve(ethers.ZeroAddress, 1);
+
+      // 此时持有者仍是 seller（StaleListing 不会触发），但转 NFT 时授权不足
+      await expect(
+        market.connect(buyer).buy(nftAddr, 1, { value: PRICE })
+      ).to.be.revertedWithCustomError(nft, "ERC721InsufficientApproval");
+    });
+  });
+
+  // ==========================================================================
+  // 四、安全：重入攻击与原子性
+  // ==========================================================================
+  describe("安全防线", function () {
+    it("【重入攻击】恶意买家在收到 NFT 时重入 buy，应被挡下且交易正常完成", async function () {
+      const { owner, seller, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 铸造 #2 给 seller 并挂单
+      await nft.connect(owner).safeMint(seller.address, TOKEN_URI);
+      await nft.connect(seller).approve(marketAddr, 2);
+      await market.connect(seller).list(nftAddr, 2, PRICE);
+
+      // 部署攻击合约，给它准备本金
+      const Malicious = await ethers.getContractFactory("MaliciousBuyer");
+      const attacker = await Malicious.deploy();
+      const attackerAddr = await attacker.getAddress();
+
+      const sellerBefore = await ethers.provider.getBalance(seller.address);
+      const expectedProceeds = PRICE - (PRICE * BigInt(FEE_BPS)) / 10000n;
+
+      // 攻击：buy 会触发 onERC721Received 回调，在里面再次调用 buy
+      await expect(attacker.attack(marketAddr, nftAddr, 2, PRICE, { value: PRICE })).to.emit(
+        market,
+        "Sold"
+      );
+
+      // 核心断言：重入必须失败
+      expect(await attacker.reentryAttempts()).to.equal(1);
+      expect(await attacker.reentrySucceeded()).to.equal(false);
+
+      // 且正常流程没被破坏：NFT 到手、卖家只收到一份货款
+      expect(await nft.ownerOf(2)).to.equal(attackerAddr);
+      expect((await ethers.provider.getBalance(seller.address)) - sellerBefore).to.equal(
+        expectedProceeds
+      );
+      // 手续费只累计了一次，说明没有重复成交
+      expect(await market.accumulatedFees()).to.equal((PRICE * BigInt(FEE_BPS)) / 10000n);
+    });
+
+    it("【重入原因】重入被挡下的原因是 ReentrancyGuardReentrantCall（锁生效）", async function () {
+      const { owner, seller, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 铸造 #2 给 seller 并挂单
+      await nft.connect(owner).safeMint(seller.address, TOKEN_URI);
+      await nft.connect(seller).approve(marketAddr, 2);
+      await market.connect(seller).list(nftAddr, 2, PRICE);
+
+      // 用探针合约重入：它会把失败的 revert 数据带回链上，供我们断言
+      const Probe = await ethers.getContractFactory("ReentrancyProbe");
+      const probe = await Probe.deploy();
+
+      // 给探针预存 1 ETH：重入发生在市场退款之前，届时探针账上必须有钱可再付一次
+      await owner.sendTransaction({ to: await probe.getAddress(), value: ethers.parseEther("1") });
+
+      await probe.attack(marketAddr, nftAddr, 2, { value: PRICE });
+
+      // 核心：失败原因必须是 nonReentrant 的锁，而不是"挂单已失效"之类的巧合
+      const expectedSelector = ethers
+        .id("ReentrancyGuardReentrantCall()")
+        .slice(0, 10); // 取前 4 字节
+      expect(await probe.reentrySucceeded()).to.equal(false);
+      expect(await probe.reentryRevertData()).to.equal(expectedSelector);
+
+      // 外层交易照常完成
+      expect(await nft.ownerOf(2)).to.equal(await probe.getAddress());
+    });
+
+    it("【原子性】卖家拒绝收款时，整笔交易回滚，NFT 不转移、挂单仍有效", async function () {
+      const { owner, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 部署一个拒绝收 ETH 的卖家合约
+      const Rejecting = await ethers.getContractFactory("RejectingSeller");
+      const rejectingSeller = await Rejecting.deploy(true); // true = 拒绝 ETH
+      const rejectingAddr = await rejectingSeller.getAddress();
+
+      // 铸造 #2 给它，并由它挂单
+      await nft.connect(owner).safeMint(rejectingAddr, TOKEN_URI);
+      await rejectingSeller.listOnMarket(marketAddr, nftAddr, 2, PRICE);
+
+      // 买家付款购买 —— 应整笔回滚
+      await expect(market.connect(buyer).buy(nftAddr, 2, { value: PRICE })).to.be.revertedWithCustomError(
+        market,
+        "EthTransferFailed"
+      );
+
+      // 关键：NFT 绝不能在卖家没收到钱的情况下转移
+      expect(await nft.ownerOf(2)).to.equal(rejectingAddr);
+      const [s, p, active] = await market.getListing(nftAddr, 2);
+      expect(active).to.equal(true);
+      expect(s).to.equal(rejectingAddr);
+      expect(p).to.equal(PRICE);
+    });
+
+    it("【对比组】愿意收款的合约卖家可以正常成交（call 而非 transfer 的价值）", async function () {
+      const { owner, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      const Rejecting = await ethers.getContractFactory("RejectingSeller");
+      const contractSeller = await Rejecting.deploy(false); // false = 正常收款
+      const sellerAddr = await contractSeller.getAddress();
+
+      await nft.connect(owner).safeMint(sellerAddr, TOKEN_URI);
+      await contractSeller.listOnMarket(marketAddr, nftAddr, 2, PRICE);
+
+      const expectedProceeds = PRICE - (PRICE * BigInt(FEE_BPS)) / 10000n;
+
+      await expect(market.connect(buyer).buy(nftAddr, 2, { value: PRICE })).to.changeEtherBalance(
+        contractSeller,
+        expectedProceeds
+      );
+
+      expect(await nft.ownerOf(2)).to.equal(buyer.address);
+    });
+
+    it("【原子性】买家拒收退款时，整笔交易回滚，NFT 与挂单均保持原状", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+
+      // 卖家是普通账户，正常挂单 #1
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      // 部署一个"能收 NFT、但拒收任何 ETH"的买家合约
+      const RefundRejecting = await ethers.getContractFactory("RefundRejectingBuyer");
+      const badBuyer = await RefundRejecting.deploy();
+
+      // 故意多付 0.5 ETH，逼市场去走"退还多余 ETH"的那段代码
+      const overpay = ethers.parseEther("0.5");
+      const sent = PRICE + overpay;
+
+      // 覆盖 buy() 里 if (!refundOk) revert EthTransferFailed() 的失败分支
+      await expect(
+        badBuyer.attack(marketAddr, nftAddr, 1, { value: sent })
+      ).to.be.revertedWithCustomError(market, "EthTransferFailed");
+
+      // 原子性：整笔回滚，NFT 还在卖家手上
+      expect(await nft.ownerOf(1)).to.equal(seller.address);
+      expect(await badBuyer.receivedNft()).to.equal(false);
+
+      // 挂单依然有效，市场既没吞钱也没白送 NFT
+      const [s, p, active] = await market.getListing(nftAddr, 1);
+      expect(active).to.equal(true);
+      expect(s).to.equal(seller.address);
+      expect(p).to.equal(PRICE);
+      expect(await market.accumulatedFees()).to.equal(0);
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(0);
+    });
+  });
+
+  // ==========================================================================
+  // 五、改价与撤单
+  // ==========================================================================
+  describe("改价与撤单", function () {
+    it("卖家可以改价，并发出 PriceUpdated 事件", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      const newPrice = ethers.parseEther("2");
+      await expect(market.connect(seller).updatePrice(nftAddr, 1, newPrice))
+        .to.emit(market, "PriceUpdated")
+        .withArgs(nftAddr, 1, PRICE, newPrice);
+
+      const [, p] = await market.getListing(nftAddr, 1);
+      expect(p).to.equal(newPrice);
+    });
+
+    it("非卖家改价应 revert NotSeller", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      await expect(
+        market.connect(buyer).updatePrice(nftAddr, 1, ethers.parseEther("9"))
+      ).to.be.revertedWithCustomError(market, "NotSeller");
+    });
+
+    it("未挂单时改价应 revert NotListed", async function () {
+      const { seller, nftAddr, market } = await loadFixture(deployMarketFixture);
+
+      await expect(
+        market.connect(seller).updatePrice(nftAddr, 1, PRICE)
+      ).to.be.revertedWithCustomError(market, "NotListed");
+    });
+
+    it("未挂单时撤单应 revert NotListed", async function () {
+      const { seller, nftAddr, market } = await loadFixture(deployMarketFixture);
+
+      // 从来没挂过单 / 挂单已失效，撤单都走 NotListed 这条分支
+      await expect(market.connect(seller).cancel(nftAddr, 1)).to.be.revertedWithCustomError(
+        market,
+        "NotListed"
+      );
+    });
+
+    it("改价为 0 应 revert PriceMustBeGreaterThanZero", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      await expect(market.connect(seller).updatePrice(nftAddr, 1, 0)).to.be.revertedWithCustomError(
+        market,
+        "PriceMustBeGreaterThanZero"
+      );
+    });
+
+    it("卖家可以撤单，并发出 Canceled 事件", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      await expect(market.connect(seller).cancel(nftAddr, 1))
+        .to.emit(market, "Canceled")
+        .withArgs(nftAddr, 1, seller.address);
+
+      const [, , active] = await market.getListing(nftAddr, 1);
+      expect(active).to.equal(false);
+    });
+
+    it("非卖家撤单应 revert NotSeller", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      await expect(market.connect(buyer).cancel(nftAddr, 1)).to.be.revertedWithCustomError(
+        market,
+        "NotSeller"
+      );
+    });
+
+    it("撤单后无法被购买", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(seller).cancel(nftAddr, 1);
+
+      await expect(
+        market.connect(buyer).buy(nftAddr, 1, { value: PRICE })
+      ).to.be.revertedWithCustomError(market, "NotListed");
+    });
+
+    it("撤单不会自动撤销授权（需自行 revoke）", async function () {
+      const { seller, nft, nftAddr, market, marketAddr } = await loadFixture(deployMarketFixture);
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(seller).cancel(nftAddr, 1);
+
+      // 授权仍然有效 —— 这正是真实市场里的常见风险点
+      expect(await nft.getApproved(1)).to.equal(marketAddr);
+
+      // 手动撤销后才归零
+      await nft.connect(seller).approve(ethers.ZeroAddress, 1);
+      expect(await nft.getApproved(1)).to.equal(ethers.ZeroAddress);
+    });
+  });
+
+  // ==========================================================================
+  // 六、手续费管理
+  // ==========================================================================
+  describe("手续费与提现", function () {
+    it("非 owner 设置费率应 revert OwnableUnauthorizedAccount", async function () {
+      const { buyer, market } = await loadFixture(deployMarketFixture);
+
+      await expect(market.connect(buyer).setFeeBps(500)).to.be.revertedWithCustomError(
+        market,
+        "OwnableUnauthorizedAccount"
+      );
+    });
+
+    it("owner 可以在上限内调整费率，并发出事件", async function () {
+      const { owner, market } = await loadFixture(deployMarketFixture);
+
+      await expect(market.connect(owner).setFeeBps(500))
+        .to.emit(market, "FeeBpsUpdated")
+        .withArgs(FEE_BPS, 500);
+
+      expect(await market.feeBps()).to.equal(500);
+    });
+
+    it("费率可以设为 0（免手续费）", async function () {
+      const { owner, market } = await loadFixture(deployMarketFixture);
+
+      await market.connect(owner).setFeeBps(0);
+      expect(await market.feeBps()).to.equal(0);
+    });
+
+    it("费率为 0 时成交：卖家实得全额，手续费与合约余额均为 0", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 先把费率调成 0（免手续费模式）
+      await market.connect(owner).setFeeBps(0);
+
+      // 走一次完整的 list → buy 流程
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      // 覆盖 buy() 里的 if (fee > 0) 的 else 分支：fee 为 0 时不累加手续费
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE })).to.changeEtherBalance(
+        seller,
+        PRICE // 一分不少，全部归卖家
+      );
+
+      // 市场不截留任何费用
+      expect(await market.accumulatedFees()).to.equal(0);
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(0);
+
+      // 正常成交的其他结果不受影响
+      expect(await nft.ownerOf(1)).to.equal(buyer.address);
+      const [, , active] = await market.getListing(nftAddr, 1);
+      expect(active).to.equal(false);
+    });
+
+    it("费率超过 10% 上限应 revert FeeTooHigh", async function () {
+      const { owner, market } = await loadFixture(deployMarketFixture);
+
+      await expect(market.connect(owner).setFeeBps(1001))
+        .to.be.revertedWithCustomError(market, "FeeTooHigh")
+        .withArgs(1001, MAX_FEE_BPS);
+    });
+
+    it("quote 应返回正确的手续费与卖家实得", async function () {
+      const { market } = await loadFixture(deployMarketFixture);
+
+      const [fee, proceeds] = await market.quote(PRICE);
+      expect(fee).to.equal((PRICE * BigInt(FEE_BPS)) / 10000n);
+      expect(proceeds).to.equal(PRICE - (PRICE * BigInt(FEE_BPS)) / 10000n);
+      expect(fee + proceeds).to.equal(PRICE); // 不丢钱、不多收
+    });
+
+    it("调整费率后，新成交按新费率计算", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+
+      // 改成 10%（上限）
+      await market.connect(owner).setFeeBps(1000);
+      const expectedProceeds = PRICE - (PRICE * 1000n) / 10000n; // 0.9 ETH
+
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE })).to.changeEtherBalance(
+        seller,
+        expectedProceeds
+      );
+      expect(await market.accumulatedFees()).to.equal((PRICE * 1000n) / 10000n);
+    });
+
+    it("owner 可以提取累计手续费，并发出 FeesWithdrawn", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      const fee = await market.accumulatedFees();
+      expect(fee).to.be.greaterThan(0);
+
+      await expect(market.connect(owner).withdrawFees(owner.address))
+        .to.emit(market, "FeesWithdrawn")
+        .withArgs(owner.address, fee);
+
+      // 提现后归零，合约不再滞留这笔钱
+      expect(await market.accumulatedFees()).to.equal(0);
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(0);
+    });
+
+    it("非 owner 提现应 revert OwnableUnauthorizedAccount", async function () {
+      const { buyer, market } = await loadFixture(deployMarketFixture);
+
+      await expect(market.connect(buyer).withdrawFees(buyer.address)).to.be.revertedWithCustomError(
+        market,
+        "OwnableUnauthorizedAccount"
+      );
+    });
+
+    it("没有可提手续费时应 revert NothingToWithdraw", async function () {
+      const { owner, market } = await loadFixture(deployMarketFixture);
+
+      await expect(market.connect(owner).withdrawFees(owner.address)).to.be.revertedWithCustomError(
+        market,
+        "NothingToWithdraw"
+      );
+    });
+
+    it("提到零地址应 revert ZeroAddress", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      await expect(
+        market.connect(owner).withdrawFees(ethers.ZeroAddress)
+      ).to.be.revertedWithCustomError(market, "ZeroAddress");
+    });
+
+    it("提现到拒收 ETH 的地址应 revert EthTransferFailed，且手续费未被清零", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 先成交一笔，让市场里真的有钱可提
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      const fee = await market.accumulatedFees();
+      expect(fee).to.be.greaterThan(0);
+
+      // 部署一个拒收 ETH 的收款地址
+      const Rejecting = await ethers.getContractFactory("EthRejectingReceiver");
+      const rejecting = await Rejecting.deploy();
+      const rejectingAddr = await rejecting.getAddress();
+
+      // 覆盖 withdrawFees 里 if (!ok) revert EthTransferFailed() 的失败分支
+      await expect(
+        market.connect(owner).withdrawFees(rejectingAddr)
+      ).to.be.revertedWithCustomError(market, "EthTransferFailed");
+
+      // 关键断言：整笔回滚，钱依然记在市场账上，没有被"先清账后打款"吃掉
+      expect(await market.accumulatedFees()).to.equal(fee);
+      expect(await rejecting.gotEth()).to.equal(false);
+
+      // 换个正常地址，owner 仍然能把钱取走 —— 证明失败没有造成资金损失
+      await expect(market.connect(owner).withdrawFees(owner.address)).to.changeEtherBalance(
+        owner,
+        fee
+      );
+      expect(await market.accumulatedFees()).to.equal(0);
+    });
+
+    it("手续费可以提到 owner 之外的地址", async function () {
+      const { owner, other, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      const fee = await market.accumulatedFees();
+      await expect(market.connect(owner).withdrawFees(other.address)).to.changeEtherBalance(
+        other,
+        fee
+      );
+    });
+
+    it("【重入提现】收款方在收到手续费时重入 withdrawFees，应被锁挡下", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 先成交一笔，产生手续费
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+      const fee = await market.accumulatedFees();
+      expect(fee).to.be.gt(0);
+
+      // 收款方合约在 receive 里会再调一次 withdrawFees
+      const Receiver = await ethers.getContractFactory("ReenteringFeeReceiver");
+      const receiver = await Receiver.deploy(marketAddr);
+      const receiverAddr = await receiver.getAddress();
+
+      await expect(market.connect(owner).withdrawFees(receiverAddr)).to.changeEtherBalance(
+        receiver,
+        fee
+      );
+
+      // 重入同样被挡下。注意这里先被 onlyOwner 拦住：
+      // 修饰符顺序是 onlyOwner → nonReentrant，收款方并不是 owner，
+      // 所以拿到的错误是 OwnableUnauthorizedAccount 而不是锁（owner 自己重入才轮到锁）
+      const unauthorizedSelector = ethers
+        .id("OwnableUnauthorizedAccount(address)")
+        .slice(0, 10);
+      const revertData = await receiver.reentryRevertData();
+      expect(await receiver.reentrySucceeded()).to.equal(false);
+      expect(revertData.slice(0, 10)).to.equal(unauthorizedSelector);
+
+      // 外层提现照常完成：手续费已清零，钱在收款方手里
+      expect(await market.accumulatedFees()).to.equal(0);
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(0);
+    });
+
+    it("【owner 自重入】把 owner 换成合约并由其重入提现，仍被那把锁挡下", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 先成交一笔，产生手续费
+      await listTokenOne(market, marketAddr, nft, seller, PRICE);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+      const fee = await market.accumulatedFees();
+
+      // 把 owner 转移给一个"会重入"的合约：只有 owner 本人重入，才轮到 nonReentrant 出场
+      const ReOwner = await ethers.getContractFactory("ReenteringOwner");
+      const reOwner = await ReOwner.deploy(marketAddr);
+      const reOwnerAddr = await reOwner.getAddress();
+      await market.connect(owner).transferOwnership(reOwnerAddr);
+      expect(await market.owner()).to.equal(reOwnerAddr);
+
+      // 由合约 owner 发起提现，收款方是自己 → 到账瞬间触发重入
+      await expect(reOwner.drain(reOwnerAddr)).to.changeEtherBalance(reOwner, fee);
+
+      // 这次的错误必须是锁：owner 检查已经过了，唯一能挡住它的就是 nonReentrant
+      const lockSelector = ethers.id("ReentrancyGuardReentrantCall()").slice(0, 10);
+      expect(await reOwner.reentrySucceeded()).to.equal(false);
+      expect(await reOwner.reentryRevertData()).to.equal(lockSelector);
+
+      expect(await market.accumulatedFees()).to.equal(0);
+    });
+  });
+
+  // ==========================================================================
+  // 六、版税（EIP-2981）
+  //
+  // 这一组是本次新增的核心。要验证的不只是"版税算对了"，而是三条不变量：
+  //   1. fee + royalty + sellerProceeds == price（一分钱不多、不少、不滞留）
+  //   2. 不支持 2981 的老 NFT 照样能成交（优雅降级，不能被市场拒之门外）
+  //   3. 版税收款方出问题（拒收 / 重入），只影响它自己，绝不影响成交
+  // ==========================================================================
+  describe("版税（EIP-2981）", function () {
+    /** 便捷：在版税 fixture 下挂单 #1（价 PRICE） */
+    async function listRoyaltyToken(market, marketAddr, nft, seller, tokenId, price = PRICE) {
+      await nft.connect(seller).approve(marketAddr, tokenId);
+      await market.connect(seller).list(nft, tokenId, price);
+    }
+
+    it("MyNFT 应同时支持 ERC721 与 ERC2981（interfaceId 0x2a55205a）", async function () {
+      const { nft } = await loadFixture(deployRoyaltyFixture);
+      expect(await nft.supportsInterface(INTERFACE_ID_ERC721)).to.equal(true);
+      expect(await nft.supportsInterface(INTERFACE_ID_ERC2981)).to.equal(true);
+    });
+
+    it("不支持 2981 的普通 ERC721：supportsInterface 返回 false", async function () {
+      const Plain = await ethers.getContractFactory("PlainERC721");
+      const plain = await Plain.deploy();
+
+      expect(await plain.supportsInterface(INTERFACE_ID_ERC721)).to.equal(true);
+      expect(await plain.supportsInterface(INTERFACE_ID_ERC2981)).to.equal(false);
+    });
+
+    it("带版税成交：平台费 + 版税 + 卖家实得 = price，且三方金额精确", async function () {
+      const { seller, buyer, creator, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployRoyaltyFixture
+      );
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+
+      const expectedFee = (PRICE * BigInt(FEE_BPS)) / 10000n;
+      const expectedRoyalty = (PRICE * BigInt(ROYALTY_BPS)) / 10000n;
+      const expectedSeller = PRICE - expectedFee - expectedRoyalty;
+
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE })).to.emit(
+        market,
+        "RoyaltyPaid"
+      );
+
+      // 三方记账
+      expect(await market.accumulatedFees()).to.equal(expectedFee);
+      expect(await market.pendingRoyalties(creator.address)).to.equal(expectedRoyalty);
+
+      // 恒等式：fee + royalty + sellerProceeds == price
+      const sellerGain = PRICE - expectedFee - expectedRoyalty;
+      expect(expectedFee + expectedRoyalty + sellerGain).to.equal(PRICE);
+
+      // 卖家实得 = price - fee - royalty（用余额变化验证，最硬）
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(
+        expectedFee + expectedRoyalty
+      );
+      // 买家花掉 PRICE（含 gas，故用 changeEtherBalance 单独验卖家）
+      expect(await nft.ownerOf(1)).to.equal(buyer.address);
+      expect(expectedSeller).to.equal(sellerGain);
+    });
+
+    it("带版税成交：卖家余额变化恰好等于 price - fee - royalty", async function () {
+      const { seller, buyer, creator, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployRoyaltyFixture
+      );
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+
+      const expectedFee = (PRICE * BigInt(FEE_BPS)) / 10000n;
+      const expectedRoyalty = (PRICE * BigInt(ROYALTY_BPS)) / 10000n;
+      const expectedSeller = PRICE - expectedFee - expectedRoyalty;
+
+      await expect(
+        market.connect(buyer).buy(nftAddr, 1, { value: PRICE })
+      ).to.changeEtherBalance(seller, expectedSeller);
+
+      expect(await market.pendingRoyalties(creator.address)).to.equal(expectedRoyalty);
+    });
+
+    it("quoteWithRoyalty 的预估应与真实成交的分账完全一致", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployRoyaltyFixture
+      );
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+
+      const [qFee, qRoyalty, qReceiver, qSeller] = await market.quoteWithRoyalty(
+        nftAddr,
+        1,
+        PRICE
+      );
+
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      expect(await market.accumulatedFees()).to.equal(qFee);
+      const royaltyReceiverOfMarket = await market.pendingRoyalties(qReceiver);
+      expect(royaltyReceiverOfMarket).to.equal(qRoyalty);
+      // 卖家实得 = price - fee - royalty，用合约内的残留 ETH 反推：
+      // 市场里剩下的钱 = fee + royalty，说明其余的都被卖家拿走了
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(qFee + qRoyalty);
+      expect(qSeller).to.equal(PRICE - qFee - qRoyalty);
+    });
+
+    it("整数除法的余数应全部归卖家（合约内不滞留）", async function () {
+      const { seller, buyer, creator, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployRoyaltyFixture
+      );
+
+      // 选一个 fee 和 royalty 都不整除的价：1 ETH + 7 wei
+      const oddPrice = PRICE + 7n;
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1, oddPrice);
+
+      await market.connect(buyer).buy(nftAddr, 1, { value: oddPrice });
+
+      const fee = await market.accumulatedFees();
+      const royalty = await market.pendingRoyalties(creator.address);
+
+      // 手续费与版税各自向下取整，两处余数都落进卖家那一份
+      const sellerProceeds = oddPrice - fee - royalty;
+      expect(fee).to.equal((oddPrice * BigInt(FEE_BPS)) / 10000n);
+      expect(royalty).to.equal((oddPrice * BigInt(ROYALTY_BPS)) / 10000n);
+      expect(fee + royalty + sellerProceeds).to.equal(oddPrice);
+
+      // 关键：成交后合约内只剩 fee + royalty，一分钱都没卡死
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(fee + royalty);
+    });
+
+    it("按 tokenId 设置不同版税：#1 走 10%，#2 走默认 5%", async function () {
+      const { owner, seller, buyer, creator, nft, nftAddr, market, marketAddr } =
+        await loadFixture(deployRoyaltyFixture);
+
+      // 给 #1 单独设 10% 版税
+      await nft.connect(owner).setTokenRoyalty(1, creator.address, TOKEN_ROYALTY_BPS);
+
+      const r1 = await nft.royaltyInfo(1, PRICE);
+      const r2 = await nft.royaltyInfo(2, PRICE);
+      expect(r1[1]).to.equal((PRICE * BigInt(TOKEN_ROYALTY_BPS)) / 10000n);
+      expect(r2[1]).to.equal((PRICE * BigInt(ROYALTY_BPS)) / 10000n);
+      expect(r1[0]).to.equal(creator.address);
+
+      // 成交 #1：应走 10%
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+      expect(await market.pendingRoyalties(creator.address)).to.equal(r1[1]);
+
+      // 成交 #2：应走默认 5%
+      await listRoyaltyToken(market, marketAddr, nft, seller, 2);
+      await market.connect(buyer).buy(nftAddr, 2, { value: PRICE });
+      expect(await market.pendingRoyalties(creator.address)).to.equal(r1[1] + r2[1]);
+    });
+
+    it("不支持 2981 的 NFT 能正常成交，且【不】产生版税", async function () {
+      const { seller, buyer, nft, market, marketAddr } = await loadFixture(deployMarketFixture);
+
+      const Plain = await ethers.getContractFactory("PlainERC721");
+      const plain = await Plain.deploy();
+      const plainAddr = await plain.getAddress();
+      await plain.mint(seller.address); // tokenId = 1
+
+      // 挂单并成交
+      await plain.connect(seller).approve(marketAddr, 1);
+      await market.connect(seller).list(plainAddr, 1, PRICE);
+
+      await expect(market.connect(buyer).buy(plainAddr, 1, { value: PRICE }))
+        .to.not.emit(market, "RoyaltyPaid");
+
+      // 只有平台费，没有任何版税入账
+      const fee = await market.accumulatedFees();
+      expect(fee).to.equal((PRICE * BigInt(FEE_BPS)) / 10000n);
+      expect(await market.pendingRoyalties(ethers.ZeroAddress)).to.equal(0);
+      expect(await plain.ownerOf(1)).to.equal(buyer.address);
+
+      // 卖家拿到除手续费外的全部
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(fee);
+      expect(nft.address).to.not.equal(plainAddr); // 两个合集确实不同
+    });
+
+    it("支持 2981 但版税为 0 的合集：成交正常，无版税入账", async function () {
+      const { seller, buyer, creator, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+
+      // 该 fixture 的 MyNFT 没有设版税 → royaltyInfo 返回 (零地址, 0)
+      const [receiver, amount] = await nft.royaltyInfo(1, PRICE);
+      expect(receiver).to.equal(ethers.ZeroAddress);
+      expect(amount).to.equal(0);
+
+      await nft.connect(seller).approve(marketAddr, 1);
+      await market.connect(seller).list(nftAddr, 1, PRICE);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      expect(await market.pendingRoyalties(creator.address)).to.equal(0);
+      expect(await market.pendingRoyalties(ethers.ZeroAddress)).to.equal(0);
+    });
+
+    it("恶意/异常合集把版税设成 100%：版税被钳制，成交仍可进行", async function () {
+      const { owner, seller, buyer, creator, nft, nftAddr, market, marketAddr } =
+        await loadFixture(deployRoyaltyFixture);
+
+      // 版税 10000 bps = 100%，若不钳制则 price - fee - royalty 会下溢 panic
+      await nft.connect(owner).setDefaultRoyalty(creator.address, 10000);
+
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE })).to.emit(
+        market,
+        "RoyaltyPaid"
+      );
+
+      const fee = await market.accumulatedFees();
+      const royalty = await market.pendingRoyalties(creator.address);
+
+      // 版税被压到 price - fee，卖家拿 0，但交易成功、没有 panic
+      expect(royalty).to.equal(PRICE - fee);
+      expect(fee + royalty).to.equal(PRICE);
+      expect(await ethers.provider.getBalance(marketAddr)).to.equal(PRICE);
+      expect(await nft.ownerOf(1)).to.equal(buyer.address);
+    });
+
+    it("版税接收者可以提取属于自己的版税，并发出 RoyaltyWithdrawn", async function () {
+      const { seller, buyer, creator, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployRoyaltyFixture
+      );
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      const royalty = await market.pendingRoyalties(creator.address);
+      expect(royalty).to.be.gt(0);
+
+      // 事件与余额要分开断言：chai 的 emit 与 changeEtherBalance 都是
+      // "非可链式"匹配器，不能串在一句话里，所以余额用手算差额来验证
+      const before = await ethers.provider.getBalance(creator.address);
+      const tx = await market.connect(creator).withdrawRoyalties();
+      const receipt = await tx.wait();
+      const gas = receipt.gasUsed * receipt.gasPrice;
+
+      await expect(tx).to.emit(market, "RoyaltyWithdrawn").withArgs(creator.address, royalty);
+      expect(await ethers.provider.getBalance(creator.address)).to.equal(before + royalty - gas);
+      expect(await market.pendingRoyalties(creator.address)).to.equal(0);
+
+      // 提完再提 → 空账
+      await expect(
+        market.connect(creator).withdrawRoyalties()
+      ).to.be.revertedWithCustomError(market, "NothingToWithdraw");
+    });
+
+    it("非版税接收者提取应 revert NothingToWithdraw", async function () {
+      const { seller, buyer, creator, other, nft, nftAddr, market, marketAddr } =
+        await loadFixture(deployRoyaltyFixture);
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      expect(await market.pendingRoyalties(creator.address)).to.be.gt(0);
+
+      // other 不是版税接收者，一分钱也提不到，且不能碰 creator 的钱
+      await expect(
+        market.connect(other).withdrawRoyalties()
+      ).to.be.revertedWithCustomError(market, "NothingToWithdraw");
+
+      expect(await market.pendingRoyalties(creator.address)).to.be.gt(0);
+    });
+
+    it("【Pull Payment】版税收款方拒收 ETH：成交照常，只有它自己提现时失败", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployRoyaltyFixture
+      );
+
+      // 把版税接收者设成一个"拒收 ETH"的合约
+      const Rejecting = await ethers.getContractFactory("RoyaltyRejectingReceiver");
+      const rejecting = await Rejecting.deploy();
+      const rejectingAddr = await rejecting.getAddress();
+      await nft.connect(owner).setDefaultRoyalty(rejectingAddr, ROYALTY_BPS);
+
+      // 【关键】成交必须成功 —— 若是 push 写法，这里就会整笔 revert
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+      await expect(market.connect(buyer).buy(nftAddr, 1, { value: PRICE })).to.emit(
+        market,
+        "RoyaltyPaid"
+      );
+      expect(await nft.ownerOf(1)).to.equal(buyer.address);
+
+      const royalty = await market.pendingRoyalties(rejectingAddr);
+      expect(royalty).to.equal((PRICE * BigInt(ROYALTY_BPS)) / 10000n);
+
+      // 拒收方自己来提 → 失败，且钱还在账上，没被"先清账后打款"吃掉
+      await expect(
+        rejecting.withdraw(marketAddr)
+      ).to.be.revertedWithCustomError(market, "RoyaltyTransferFailed");
+      expect(await market.pendingRoyalties(rejectingAddr)).to.equal(royalty);
+      expect(await rejecting.gotEth()).to.equal(false);
+    });
+
+    it("【重入提现】版税收款方在收到款时重入 withdrawRoyalties，应被锁挡下", async function () {
+      const { owner, seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployRoyaltyFixture
+      );
+
+      const Reenter = await ethers.getContractFactory("ReenteringRoyaltyReceiver");
+      const reenter = await Reenter.deploy(marketAddr);
+      const reenterAddr = await reenter.getAddress();
+      await nft.connect(owner).setDefaultRoyalty(reenterAddr, ROYALTY_BPS);
+
+      await listRoyaltyToken(market, marketAddr, nft, seller, 1);
+      await market.connect(buyer).buy(nftAddr, 1, { value: PRICE });
+
+      const royalty = await market.pendingRoyalties(reenterAddr);
+      expect(royalty).to.be.gt(0);
+
+      await expect(reenter.withdraw()).to.changeEtherBalance(reenter, royalty);
+
+      // 与 withdrawFees 不同：这里没有 onlyOwner，所以挡住重入的就是那把锁
+      const lockSelector = ethers.id("ReentrancyGuardReentrantCall()").slice(0, 10);
+      expect(await reenter.reentrySucceeded()).to.equal(false);
+      expect(await reenter.reentryRevertData()).to.equal(lockSelector);
+
+      // 外层提现照常完成
+      expect(await market.pendingRoyalties(reenterAddr)).to.equal(0);
+    });
+  });
+});

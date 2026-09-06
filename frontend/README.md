@@ -1,0 +1,130 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: 28991c901333d661663affdd91730ffe_f0dc8894a83511f19281525400dcc5b3
+    ReservedCode1: gu1tNRejRfps7ktbcntsKDrsPZ76BfwNm4EtfCJWXDBERaYm79rJ2V+d3cBGivwXCHa7sCzOuVJ5egLvG0Ll43Kyl5uQNeppTDOMU3TnjTdtSlop7KAq0ScELfTRHJv8k0yCuwMHDP0Rs40XXDIJK63cYm8vNbi6ORuIVuaK8CugB++glg2St3jtJ7k=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: 28991c901333d661663affdd91730ffe_f0dc8894a83511f19281525400dcc5b3
+    ReservedCode2: gu1tNRejRfps7ktbcntsKDrsPZ76BfwNm4EtfCJWXDBERaYm79rJ2V+d3cBGivwXCHa7sCzOuVJ5egLvG0Ll43Kyl5uQNeppTDOMU3TnjTdtSlop7KAq0ScELfTRHJv8k0yCuwMHDP0Rs40XXDIJK63cYm8vNbi6ORuIVuaK8CugB++glg2St3jtJ7k=
+---
+
+# SimpleMarket 前端控制台
+
+一个纯静态的链上操作台：不打包、不编译、零框架，只靠 `ethers v6` 直接和 Sepolia 上的两个合约对话。
+代码即文档，你可以打开 `app.js` 看清每一次调用传了什么。
+
+---
+
+## 一、启动
+
+**必须用 http:// 打开，不能直接双击 index.html。**
+因为浏览器在 `file://` 协议下会禁止页面读取同目录的 `abi/*.json`，页面会拿不到 ABI。
+
+```bash
+cd frontend
+node serve.js
+```
+
+然后浏览器打开 <http://localhost:5173>
+
+> `serve.js` 是零依赖的（只用 Node 内置模块），不需要 npm install。
+> 停止服务：在启动它的那个黑窗口里按 `Ctrl + C`。
+
+---
+
+## 二、文件构成
+
+| 文件 | 作用 |
+|------|------|
+| `index.html` | 页面结构与样式 |
+| `app.js` | 全部业务逻辑：连钱包、读写合约、EIP-712 签名、错误翻译 |
+| `config.js` | **自动生成**，合约地址与链配置（重新部署后见下方"保持同步"） |
+| `serve.js` | 零依赖静态服务器 |
+| `abi/*.json` | 从 `artifacts/` 导出的两份 ABI |
+| `vendor/ethers.umd.min.js` | 本地化的 ethers v6（514 KB，断网也能用） |
+
+---
+
+## 三、页面分区
+
+| 区块 | 说明 |
+|------|------|
+| 合约状态 | 平台费率、暂停状态、owner、市场代收手续费 |
+| 我的 NFT | 枚举你钱包里的 NFT，点击一行会自动把 TokenId 填进下方所有操作框 |
+| 挂单 / 撤单 / 改价 | 卖家侧。挂单只登记价格，NFT 仍在你钱包 |
+| 购买 | 买家侧。先「预估分账」看平台费与版税，再买入 |
+| EIP-712 签名挂单 | 卖家离线签名挂牌，**零 gas、不上链**，把 JSON 发给买家 |
+| 用签名成交 | 买家粘贴 JSON 成交，付 gas |
+| 出价 | 买家把 ETH 打进合约代管，按出价人分桶 |
+| 处置出价 | 持有者接受 / 拒绝某人的出价 |
+| 资金 | Pull Payment 的三笔钱：待领款、版税、平台费（仅 owner） |
+| 日志 | 每笔交易的哈希、区块、gas，失败时给出中文原因 |
+
+---
+
+## 四、三条完整操作路径
+
+### 路径 A：传统挂单（卖家上链，买家上链）
+
+1. 连接钱包 → 切到 Sepolia
+2. 「我的 NFT」点「授权市场」，授权一次即可
+3. 点列表里的一枚 NFT，填价格 → 挂单
+4. 换一个账户（买家）：填入 NFT 地址、TokenId、价格 → 预估分账 → 买入
+5. 卖家在「资金」里领回待领款
+
+### 路径 B：签名挂单（卖家零 gas）
+
+1. 卖家：填 TokenId、价格、有效期 → 生成签名 → 复制 JSON
+2. 把 JSON 发给买家（微信、邮件都行）
+3. 买家：粘贴到「用签名成交」→ 解析并预估（会校验 nonce 是否匹配、是否过期）→ 签名成交
+
+签名的安全边界（都由合约保证，前端只是把参数传对）：
+
+- 摘要里带 `chainId` + 市场合约地址 → 天然防跨链、跨市场重放
+- `nonce` 成交后自动 +1 → 同一条签名只能成交一次
+- 卖家可点「作废旧签名」主动 +1，批量作废所有已发出但未成交的签名
+- `deadline` 过期即失效
+
+### 路径 C：出价（买家主动）
+
+1. 买家：填 NFT 地址、TokenId、出价金额 → 出价（ETH 进入合约代管）
+2. 重复对同一枚出价是**累加**（即加价），不是覆盖
+3. 持有者：填出价人地址 → 接受（成交）或 拒绝（退款）
+4. 买家可随时「取回出价」，把代管的 ETH 拿回来
+
+---
+
+## 五、常见问题
+
+| 现象 | 原因与处理 |
+|------|-----------|
+| 提示"没有检测到钱包" | 需要用带 Web3 钱包的浏览器打开（桌面 MetaMask 扩展，或应用宝内的 MetaMask） |
+| 顶部显示"网络不符" | 在钱包里切到 Sepolia；或让页面自动发起切换 |
+| 挂单失败：`MarketNotApproved` | 先点「授权市场」。这一步是 ERC721 的 `setApprovalForAll` |
+| 成交失败：`InvalidNonce` | 这条签名已被用过，或卖家点了「作废旧签名」。请卖家重新签一条 |
+| 成交失败：`SignatureExpired` | 超过 deadline，重新签一条、把有效期调长 |
+| 铸造失败：`PublicMintDisabled` | 公开铸造由 owner 开关，需要 owner 先调用 `setPublicMintEnabled(true)` |
+| 合约暂停时 | 开仓类（挂单/买入/出价/签名成交/铸造）会被挡下；撤单与提现不受影响，这是刻意设计 |
+
+---
+
+## 六、重新部署后保持同步
+
+合约重新部署后，前端的地址会失效。执行：
+
+```bash
+node scripts/verify-eip712-frontend.js   # 顺便验证签名算法仍与链上一致
+```
+
+并重新生成 `config.js`（读取 `deployments/*-sepolia.json`）：
+在 `frontend/` 下重新跑一次生成逻辑即可，或手工改 `config.js` 里的两个地址。
+
+---
+
+## 七、安全边界
+
+- 私钥永远不进这个页面：所有签名都由钱包插件完成，页面只拿到签名结果
+- 页面不保存任何状态到服务器（根本没有服务器逻辑，`serve.js` 只发静态文件）
+- 合约侧采用 Pull Payment：合约从不主动给你转账，所有款项由你主动领取
+*（内容由AI生成，仅供参考）*

@@ -1,0 +1,1472 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Code coverage report for contracts\MultiSigOwner.sol</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../prettify.css" />
+    <link rel="stylesheet" href="../base.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+<body>
+<div class='wrapper'>
+  <div class='pad1'>
+    <h1>
+      <a href="../index.html">all files</a> / <a href="index.html">contracts/</a> MultiSigOwner.sol
+    </h1>
+    <div class='clearfix'>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">100% </span>
+        <span class="quiet">Statements</span>
+        <span class='fraction'>50/50</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">90.28% </span>
+        <span class="quiet">Branches</span>
+        <span class='fraction'>65/72</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">100% </span>
+        <span class="quiet">Functions</span>
+        <span class='fraction'>17/17</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">100% </span>
+        <span class="quiet">Lines</span>
+        <span class='fraction'>73/73</span>
+      </div>
+    </div>
+  </div>
+  <div class='status-line high'></div>
+<pre><table class="coverage">
+<tr><td class="line-count quiet">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259
+260
+261
+262
+263
+264
+265
+266
+267
+268
+269
+270
+271
+272
+273
+274
+275
+276
+277
+278
+279
+280
+281
+282
+283
+284
+285
+286
+287
+288
+289
+290
+291
+292
+293
+294
+295
+296
+297
+298
+299
+300
+301
+302
+303
+304
+305
+306
+307
+308
+309
+310
+311
+312
+313
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325
+326
+327
+328
+329
+330
+331
+332
+333
+334
+335
+336
+337
+338
+339
+340
+341
+342
+343
+344
+345
+346
+347
+348
+349
+350
+351
+352
+353
+354
+355
+356
+357
+358
+359
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
+372
+373
+374
+375
+376
+377
+378
+379
+380
+381
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
+394
+395
+396
+397
+398
+399
+400
+401
+402
+403
+404
+405
+406
+407
+408
+409
+410
+411
+412
+413
+414
+415
+416
+417
+418
+419
+420
+421
+422
+423
+424
+425
+426
+427
+428
+429
+430
+431
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442
+443
+444
+445
+446
+447
+448
+449
+450
+451
+452
+453
+454
+455
+456
+457
+458
+459
+460
+461
+462
+463
+464
+465
+466
+467
+468
+469
+470</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">121×</span>
+<span class="cline-any cline-yes">118×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12×</span>
+<span class="cline-any cline-yes">9×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">105×</span>
+<span class="cline-any cline-yes">104×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">104×</span>
+<span class="cline-any cline-yes">102×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">51×</span>
+<span class="cline-any cline-yes">50×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">17×</span>
+<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">15×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">14×</span>
+<span class="cline-any cline-yes">38×</span>
+<span class="cline-any cline-yes">38×</span>
+<span class="cline-any cline-yes">37×</span>
+<span class="cline-any cline-yes">36×</span>
+<span class="cline-any cline-yes">36×</span>
+<span class="cline-any cline-yes">36×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12×</span>
+<span class="cline-any cline-yes">12×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">60×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">59×</span>
+<span class="cline-any cline-yes">59×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">59×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">59×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">50×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">5×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">46×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">46×</span>
+<span class="cline-any cline-yes">5×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">41×</span>
+<span class="cline-any cline-yes">41×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">41×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">41×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">109×</span>
+<span class="cline-any cline-yes">109×</span>
+<span class="cline-any cline-yes">109×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">6×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-yes">3×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">20×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">10×</span>
+<span class="cline-any cline-yes">10×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+&nbsp;
+/**
+ * @title MultiSigOwner —— 2/3 多签治理合约
+ *
+ * ============================================================================
+ * 一、为什么要这个合约（一句话：消灭单点故障）
+ * ============================================================================
+ *
+ * 现在的 SimpleMarket / MyNFT 是 Ownable2Step —— 【一个地址说了算】。
+ * 这个地址（0xe3C2...fCd8）的私钥一旦出现下面任何一种情况，项目就完了：
+ *   · 私钥泄露 / 电脑中毒 / 被钓鱼签了恶意交易
+ *   · 私钥丢失（硬盘坏、助记词没备份）
+ *   · 持有人作恶（自己改费率、卷走手续费、随便暂停合约）
+ *
+ * 多签就是把"一把钥匙"换成"三把钥匙里凑两把才能开门"：
+ *
+ *   3 个 owner，阈值(threshold) = 2
+ *   任何一次 owner 操作（改费率、提手续费、暂停合约、mint）
+ *   都必须至少 2 个人点头才能执行。
+ *
+ * 这是主网上线前【最该补的一课】。历史上因为单人 owner 出事的案例数不清：
+ *   · 2021 年 PAID Network：owner 私钥泄露，攻击者直接 mint 了 5900 万个代币
+ *   · 2021 年 Uranium Finance / 2022 年 Nomad / 2023 年无数小项目……
+ * 共同点不是代码有 bug，而是【权限太集中】。
+ *
+ * ============================================================================
+ * 二、它怎么接手市场的所有权（关键：两步走）
+ * ============================================================================
+ *
+ * SimpleMarket 用的是 Ownable2Step，转让 owner 必须走两步：
+ *
+ *   第 1 步（现任 owner 发起）：
+ *     market.transferOwnership(multisigAddress)
+ *     → 只是"提名"，owner 还是旧的，新 owner 地址存进 pendingOwner
+ *
+ *   第 2 步（新 owner 确认 —— 这里是多签）：
+ *     multisig 内部提议 → 2 人确认 → 执行
+ *     market.acceptOwnership()          ← 这笔交易的 msg.sender 是多签合约地址
+ *     → owner 正式变成多签合约
+ *
+ * 为什么要两步？防止你把 owner 转给一个【打错的地址 / 不支持该操作的合约】，
+ * 那样权限就永久锁死了。两步走让接收方必须"亲自表态"。
+ *
+ * 之后市场的所有 onlyOwner 操作，都要走多签流程：
+ *   某人 submit(market, 0, setFeeBps(300) 的 calldata)
+ *   → 另一人 confirm(0)
+ *   → 任意人 execute(0)   ← 合约用 call 发这笔交易，msg.sender == 多签地址
+ *   → market.owner() 看到的是多签地址，校验通过 ✓
+ *
+ * ============================================================================
+ * 三、状态机：一笔多签交易的生命周期
+ * ============================================================================
+ *
+ *   submit()            confirmations = 1（提交者自动投第一票）
+ *      │
+ *      ├─ confirm()     confirmations = 2  ── 达到阈值
+ *      │      │                                  │
+ *      │      └─ execute() ─────────────────────┘  → 真正发出 call，executed = true
+ *      │
+ *      └─ revoke()      撤票，confirmations 减 1（后悔药，执行前都能撤）
+ *
+ * 三个铁律：
+ *   1. 提交者自动投第一票（避免"提了不算数"的尴尬，也省一笔 gas）
+ *   2. 执行前随时可以撤票
+ *   3. 执行后（executed = true）一切冻结，不能再确认、不能重复执行
+ *
+ * ============================================================================
+ * 四、安全设计（逐条对应 Slither 考点）
+ * ============================================================================
+ *
+ * 1) 用 call，绝不用 delegatecall
+ *    delegatecall 会在【本合约的存储】上执行别人的代码 —— 那等于把多签的
+ *    owners / threshold 暴露给被调用方改。多签只需要"替市场发一笔交易"，
+ *    用 call 就够了（被调方的存储是它自己的）。
+ *    这是 Gnosis Safe 用 delegatecall 而我不用的原因：Safe 需要模块化扩展，
+ *    我们不需要 —— 简单就是安全。
+ *
+ * 2) Checks-Effects-Interactions（先改状态，再外部调用）
+ *    execute() 里先把 executed 置 true，再发 call。
+ *    如果被调用方是恶意合约、在回调里再入 execute()，
+ *    会撞上 AlreadyExecuted 直接 revert —— 重入门都没开。
+ *
+ * 3) 低阶 call 必须检查返回值
+ *    (success, data) = to.call(...)，失败就 revert 整笔交易。
+ *    不做检查的话：交易"看起来成功"了（executed=true），
+ *    但目标合约其实没执行 —— 钱 / 状态凭空消失。
+ *
+ * 4) 阈值与 owner 数量的不变式（invariant）
+ *    0 &lt; threshold &lt;= owners.length，任何时候都成立。
+ *    移除 owner 时如果阈值超出了，自动把阈值下调到 owner 数量。
+ *    没有这条，移除一个人就可能让多签【永久锁死】（谁都凑不够票）。
+ *
+ * 5) 管理函数只能"自己调自己"
+ *    addOwner / removeOwner / changeThreshold 用 onlySelf 保护，
+ *    唯一调用路径是多签流程本身：
+ *      submit(address(this), 0, addOwner(newGuy) 的 calldata) → confirm → execute
+ *    也就是说：换人、改规则，同样需要 2/3 同意。
+ *    如果留一个 onlyOwner 的后门，那"一个人就能把自己加进来" —— 多签白做。
+ *
+ * 6) 没有自毁、没有代理、没有 upgrade
+ *    规则写死在链上，谁都改不了（包括我们）。这是缺点也是优点：
+ *    出事没法打补丁，但黑客也没法打补丁。
+ *
+ * ============================================================================
+ * 五、已知取舍（诚实列出，不藏着）
+ * ============================================================================
+ *
+ * · owners 数组用 swap-and-pop 删除，【不保证顺序】。
+ *   顺序对多签没有意义（权威状态是 isOwner 映射），但如果你要按顺序展示，
+ *   读出来之后自己在前端排序。
+ * · 没有"时间锁（timelock）"：2 人同意后立刻执行，没有延迟窗口。
+ *   真要做时间锁，是下一个迭代的事（见路线图 P1）。
+ * · 没有"提案过期"机制：老提案一直挂着，靠人自觉不执行。
+ * · execute 允许【任何人】调用（达到阈值后），方便外包 gas。
+ *   执行人不必须是 owner —— 因为能不能执行只取决于票数，不取决于谁发起。
+ */
+contract MultiSigOwner {
+    // ========================================================================
+    // 数据结构
+    // ========================================================================
+&nbsp;
+    /**
+     * @notice 一笔待执行的多签交易
+     * @param to            目标合约（比如市场合约地址）
+     * @param value         随交易发送的 ETH（提手续费时是 0，分钱时是金额）
+     * @param data          调用数据（函数选择器 + 参数编码）
+     * @param confirmations 已确认票数
+     * @param executed      是否已执行
+     */
+    struct Transaction {
+        address to;
+        uint256 value;
+        bytes data;
+        uint256 confirmations;
+        bool executed;
+    }
+&nbsp;
+    // ========================================================================
+    // 状态变量
+    // ========================================================================
+&nbsp;
+    /// @notice 多签成员列表（删除时不保序，见文件头"已知取舍"）
+    address[] private _owners;
+&nbsp;
+    /// @notice 某地址是否为多签成员 —— 权限判断的【唯一权威】来源
+    mapping(address =&gt; bool) public isOwner;
+&nbsp;
+    /// @notice 执行阈值：至少多少票才能执行
+    uint256 public threshold;
+&nbsp;
+    /// @notice 所有提案，索引即 txId
+    Transaction[] private _transactions;
+&nbsp;
+    /// @notice txId =&gt; owner =&gt; 是否已确认
+    mapping(uint256 =&gt; mapping(address =&gt; bool)) public isConfirmedBy;
+&nbsp;
+    // ========================================================================
+    // 事件
+    // ========================================================================
+&nbsp;
+    event OwnerAdded(address indexed owner);
+    event OwnerRemoved(address indexed owner);
+    event ThresholdChanged(uint256 oldThreshold, uint256 newThreshold);
+    event Submitted(uint256 indexed txId, address indexed proposer, address indexed to, uint256 value, bytes data);
+    event Confirmed(uint256 indexed txId, address indexed owner, uint256 confirmations);
+    event Revoked(uint256 indexed txId, address indexed owner, uint256 confirmations);
+    event Executed(uint256 indexed txId, address indexed to, uint256 value, bool success);
+    event Received(address indexed sender, uint256 amount);
+&nbsp;
+    // ========================================================================
+    // 自定义错误（比 require 字符串省 gas，且前端能拿到错误类型）
+    // ========================================================================
+&nbsp;
+    error ZeroAddress();
+    error EmptyOwners();
+    error DuplicateOwner(address owner);
+    error NotAnOwner();
+    error AlreadyAnOwner();
+    error OwnerNotFound();
+    error CannotRemoveLastOwner();
+    error ThresholdCannotBeZero();
+    error InvalidThreshold(uint256 provided, uint256 maxAllowed);
+    error TxDoesNotExist(uint256 txId);
+    error AlreadyConfirmed(uint256 txId, address owner);
+    error NotConfirmedYet(uint256 txId, address owner);
+    error AlreadyExecuted(uint256 txId);
+    error BelowThreshold(uint256 confirmations, uint256 threshold);
+    error ExecutionFailed(uint256 txId);
+    error OnlySelf();
+&nbsp;
+    // ========================================================================
+    // 修饰器
+    // ========================================================================
+&nbsp;
+    /// @dev 只有多签成员能调用
+    modifier onlyOwner() {
+        if (!isOwner[msg.sender]) revert NotAnOwner();
+        _;
+    }
+&nbsp;
+    /**
+     * @dev 只有多签合约【自己】能调用
+     *      用于保护管理函数：换人 / 改阈值必须走 submit → confirm → execute
+     */
+    modifier onlySelf() {
+        if (msg.sender != address(this)) revert OnlySelf();
+        _;
+    }
+&nbsp;
+    modifier txExists(uint256 txId) {
+        if (txId &gt;= _transactions.length) revert TxDoesNotExist(txId);
+        _;
+    }
+&nbsp;
+    modifier notExecuted(uint256 txId) {
+        if (_transactions[txId].executed) revert AlreadyExecuted(txId);
+        _;
+    }
+&nbsp;
+    modifier notConfirmed(uint256 txId) {
+        if (isConfirmedBy[txId][msg.sender]) revert AlreadyConfirmed(txId, msg.sender);
+        _;
+    }
+&nbsp;
+    // ========================================================================
+    // 构造与收款
+    // ========================================================================
+&nbsp;
+    /**
+     * @notice 部署多签
+     * @param owners_    成员地址数组（建议 3 个【互相独立】的地址）
+     * @param threshold_ 执行阈值（3 人时建议 2）
+     *
+     * ⚠️ 部署检查清单（错了没法改，只能重新部署）：
+     *   1. 三个地址必须是【你独立控制】的三个不同私钥（冷钱包 / 另一台电脑 / 硬件钱包）
+     *      放同一个电脑上的三个账户 = 多签形同虚设，一台机器中毒全没了
+     *   2. 别用交易所地址、合约地址当 owner（它们不会帮你确认）
+     *   3. threshold 不要设成 1（等于没签）也不要设成 3（一个人失联就锁死）
+     */
+    constructor(address[] memory owners_, uint256 threshold_) {
+        if (owners_.length == 0) revert EmptyOwners();
+        if (threshold_ == 0) revert ThresholdCannotBeZero();
+        // 不变式：threshold 不能超过成员数，否则永远凑不够票 = 永久锁死
+        if (threshold_ &gt; owners_.length) revert InvalidThreshold(threshold_, owners_.length);
+&nbsp;
+        for (uint256 i = 0; i &lt; owners_.length; ++i) {
+            address owner = owners_[i];
+            if (owner == address(0)) revert ZeroAddress();
+            if (isOwner[owner]) revert DuplicateOwner(owner);
+            isOwner[owner] = true;
+            _owners.push(owner);
+            emit OwnerAdded(owner);
+        }
+&nbsp;
+        threshold = threshold_;
+        emit ThresholdChanged(0, threshold_);
+    }
+&nbsp;
+    /**
+     * @notice 接收 ETH —— 必须要有，否则市场手续费提不出来
+     *         市场是 Pull 模式：withdrawFees 把钱打给 owner（也就是本合约）
+     */
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
+    }
+&nbsp;
+    // ========================================================================
+    // 核心流程：submit → confirm → execute（revoke 是后悔药）
+    // ========================================================================
+&nbsp;
+    /**
+     * @notice 提交一笔待执行交易，并自动投第一票
+     * @param to    目标合约地址
+     * @param value 随交易发送的 ETH（wei）
+     * @param data  调用数据，用 abi.encodeWithSignature 生成
+     * @return txId 提案编号，后续 confirm / revoke / execute 都用它
+     *
+     * 为什么提交即投票？
+     *   一个人花 gas 提交了提案，说明他同意 —— 否则逻辑上说不通。
+     *   这样 2/3 时只需【再 1 个人确认】即可执行，省一笔交易。
+     *   （Gnosis Safe 不自动投票，因为它的提案人可以是中立的中继者；
+     *    我们自己用，提交即同意更自然。）
+     */
+    function submit(address to, uint256 value, bytes calldata data)
+        external
+        onlyOwner
+        returns (uint256 txId)
+    {
+        if (to == address(0)) revert ZeroAddress();
+&nbsp;
+        txId = _transactions.length;
+        _transactions.push(
+            Transaction({
+                to: to,
+                value: value,
+                data: data,
+                confirmations: 0,
+                executed: false
+            })
+        );
+&nbsp;
+        emit Submitted(txId, msg.sender, to, value, data);
+&nbsp;
+        // 内部调用不改 msg.sender，投的就是提交者这一票
+        _confirm(txId);
+    }
+&nbsp;
+    /**
+     * @notice 确认某个提案（投赞成票）
+     * @param txId 提案编号
+     */
+    function confirm(uint256 txId) external onlyOwner txExists(txId) notExecuted(txId) notConfirmed(txId) {
+        _confirm(txId);
+    }
+&nbsp;
+    /**
+     * @notice 撤回自己的确认票（执行前随时可撤）
+     * @param txId 提案编号
+     */
+    function revoke(uint256 txId) external <span class="missing-if-branch" title="else path not taken" >E</span>onlyOwner <span class="missing-if-branch" title="else path not taken" >E</span>txExists(txId) <span class="missing-if-branch" title="else path not taken" >E</span>notExecuted(txId) {
+        if (!isConfirmedBy[txId][msg.sender]) revert NotConfirmedYet(txId, msg.sender);
+&nbsp;
+        isConfirmedBy[txId][msg.sender] = false;
+        _transactions[txId].confirmations -= 1;
+&nbsp;
+        emit Revoked(txId, msg.sender, _transactions[txId].confirmations);
+    }
+&nbsp;
+    /**
+     * @notice 执行提案 —— 票数够了才能真正发出这笔交易
+     * @param txId 提案编号
+     * @return success    目标调用是否成功
+     * @return returnData 目标调用的返回数据
+     *
+     * 谁都能调：执行只取决于票数，不取决于谁发起。
+     * 这样"A 提议、B 确认"之后，可以让 C（甚至不是 owner）付 gas 去执行。
+     *
+     * CEI 说明：先置 executed = true（Effects），再 call（Interactions）。
+     * 恶意目标合约若回调 execute，第二行修饰符就会 revert。
+     */
+    function execute(uint256 txId)
+        external
+        <span class="missing-if-branch" title="else path not taken" >E</span>txExists(txId)
+        notExecuted(txId)
+        returns (bool success, bytes memory returnData)
+    {
+        Transaction storage transaction = _transactions[txId];
+&nbsp;
+        if (transaction.confirmations &lt; threshold) {
+            revert BelowThreshold(transaction.confirmations, threshold);
+        }
+&nbsp;
+        // 顺序不能乱：先改状态 → 先记账（事件）→ 最后才做外部交互。
+        // 恶意目标合约若回调 execute，会撞上 AlreadyExecuted；
+        // 而 call 失败会整笔回滚，上面记的账也一并撤销，绝不会留下"半执行"状态。
+        transaction.executed = true;
+        emit Executed(txId, transaction.to, transaction.value, true);
+&nbsp;
+        (success, returnData) = transaction.to.call{value: transaction.value}(transaction.data);
+&nbsp;
+        // 低阶 call 不检查返回值 = 静默失败，必须显式处理
+        if (!success) revert ExecutionFailed(txId);
+    }
+&nbsp;
+    /// @dev 内部投票逻辑，submit 与 confirm 共用
+    function _confirm(uint256 txId) private {
+        isConfirmedBy[txId][msg.sender] = true;
+        _transactions[txId].confirmations += 1;
+        emit Confirmed(txId, msg.sender, _transactions[txId].confirmations);
+    }
+&nbsp;
+    // ========================================================================
+    // 自管理：只能通过多签流程（submit → confirm → execute）触发
+    // ========================================================================
+&nbsp;
+    /**
+     * @notice 新增一个多签成员
+     * @dev 调用方式：submit(address(multisig), 0, abi.encodeWithSignature("addOwner(address)", guy))
+     */
+    function addOwner(address newOwner) external onlySelf {
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (newOwner == address(0)) revert ZeroAddress();
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (isOwner[newOwner]) revert AlreadyAnOwner();
+&nbsp;
+        isOwner[newOwner] = true;
+        _owners.push(newOwner);
+        emit OwnerAdded(newOwner);
+    }
+&nbsp;
+    /**
+     * @notice 移除一个多签成员
+     * @dev 若移除后 threshold 超过剩余人数，阈值自动下调 —— 防止永久锁死
+     */
+    function removeOwner(address owner) external onlySelf {
+        if (!isOwner[owner]) revert OwnerNotFound();
+        // 一个人都不剩 = 合约里的钱和权限全部锁死
+        if (_owners.length &lt;= 1) revert CannotRemoveLastOwner();
+&nbsp;
+        isOwner[owner] = false;
+&nbsp;
+        // swap-and-pop：把最后一个元素搬到被删位置再弹出，省 gas
+        // 代价是顺序会变（对多签无影响，权威状态是 isOwner 映射）
+        uint256 last = _owners.length - 1;
+        uint256 index = _owners.length;
+        for (uint256 i = 0; i &lt;= last; ++i) {
+            if (_owners[i] == owner) {
+                index = i;
+                break;
+            }
+        }
+        // isOwner 已确认存在，理论上必定找到；留一道保险防止状态不一致
+        <span class="missing-if-branch" title="if path not taken" >I</span>if (index &gt;= _owners.length) revert OwnerNotFound();
+&nbsp;
+        _owners[index] = _owners[last];
+        _owners.pop();
+&nbsp;
+        emit OwnerRemoved(owner);
+&nbsp;
+        // 维持不变式：threshold &lt;= owners.length
+        if (threshold &gt; _owners.length) {
+            uint256 old = threshold;
+            threshold = _owners.length;
+            emit ThresholdChanged(old, threshold);
+        }
+    }
+&nbsp;
+    /**
+     * @notice 修改执行阈值
+     * @dev 调用方式：submit(address(multisig), 0, abi.encodeWithSignature("changeThreshold(uint256)", 3))
+     */
+    function changeThreshold(uint256 newThreshold) external onlySelf {
+        if (newThreshold == 0) revert ThresholdCannotBeZero();
+        if (newThreshold &gt; _owners.length) revert InvalidThreshold(newThreshold, _owners.length);
+&nbsp;
+        emit ThresholdChanged(threshold, newThreshold);
+        threshold = newThreshold;
+    }
+&nbsp;
+    // ========================================================================
+    // 视图函数
+    // ========================================================================
+&nbsp;
+    /// @notice 当前所有多签成员（顺序不保证）
+    function getOwners() external view returns (address[] memory) {
+        return _owners;
+    }
+&nbsp;
+    /// @notice 提案总数（最新 txId = 总数 - 1）
+    function getTransactionCount() external view returns (uint256) {
+        return _transactions.length;
+    }
+&nbsp;
+    /// @notice 读取某个提案的完整信息
+    function getTransaction(uint256 txId)
+        external
+        view
+        returns (address to, uint256 value, bytes memory data, uint256 confirmations, bool executed)
+    {
+        Transaction storage transaction = _transactions[txId];
+        return (
+            transaction.to,
+            transaction.value,
+            transaction.data,
+            transaction.confirmations,
+            transaction.executed
+        );
+    }
+}
+&nbsp;</pre></td></tr>
+</table></pre>
+<div class='push'></div><!-- for sticky footer -->
+</div><!-- /wrapper -->
+<div class='footer quiet pad2 space-top1 center small'>
+  Code coverage
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Sat Sep 05 2026 19:21:44 GMT+0800 (中国标准时间)
+</div>
+</div>
+<script src="../prettify.js"></script>
+<script>
+window.onload = function () {
+        if (typeof prettyPrint === 'function') {
+            prettyPrint();
+        }
+};
+</script>
+<script src="../sorter.js"></script>
+</body>
+</html>
