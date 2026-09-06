@@ -27,6 +27,9 @@ AIGC:
 | SimpleMarket | `0x71450D767f2b83722b88164316d7308DB20A39c8` | SimpleMarket-standard-input.json | SimpleMarket-constructor-args.txt |
 | MultiSigOwner | `0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317` | MultiSigOwner-standard-input.json | MultiSigOwner-constructor-args.txt |
 | MarketTimelock | `0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119` | MarketTimelock-standard-input.json | MarketTimelock-constructor-args.txt |
+| MyToken | `0xcc9f3027899899c743593E98be543B75B7BA0A05` | MyToken-standard-input.json | MyToken-constructor-args.txt |
+
+> MyToken 的构造参数已用其在 Sepolia 上的部署交易 calldata 反向校验过（initialOwner `0xe3C2…afCd8`、initialSupply `1000000`），与链上字节完全一致。
 
 ## 上传步骤（每个合约重复一次）
 
