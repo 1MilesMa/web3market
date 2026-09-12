@@ -1,14 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 28991c901333d661663affdd91730ffe_3c77db82a91611f1aed8525400dcc5b3
-    ReservedCode1: UEiK8ogvKub4zG42Yk/UQO2RpSr6QEcu4ZLLe8QzTVUO6AQgI69MO9kERowehe/ei0A45LHIzQRnt7nwyx5bRnPXLQvHod4KqgqdWCgXVGMFAkjCRpbgcrAPTfwdF8tO0Hi82t4XAPgsPTHExPYcsxPR6BApTfqGN9t0DVU0gC4jLODArRa78DQYE9Q=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 28991c901333d661663affdd91730ffe_3c77db82a91611f1aed8525400dcc5b3
-    ReservedCode2: UEiK8ogvKub4zG42Yk/UQO2RpSr6QEcu4ZLLe8QzTVUO6AQgI69MO9kERowehe/ei0A45LHIzQRnt7nwyx5bRnPXLQvHod4KqgqdWCgXVGMFAkjCRpbgcrAPTfwdF8tO0Hi82t4XAPgsPTHExPYcsxPR6BApTfqGN9t0DVU0gC4jLODArRa78DQYE9Q=
----
-
 # Etherscan 源码验证包 —— 上传说明
 
 本机网络到 Etherscan 全域名超时，因此改用「离线生成 + 手动上传」的方式完成源码验证。
@@ -63,4 +52,3 @@ AIGC:
 ---
 
 生成时间：2026-09-05T10:36:43.659Z
-*（内容由AI生成，仅供参考）*

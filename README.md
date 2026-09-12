@@ -1,14 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 28991c901333d661663affdd91730ffe_ffc50cf9a6d311f1b67f525400dcc5b3
-    ReservedCode1: u9xJx2hvpl91mHpjyIFf4e6oCtcFS73UfloPPTSw3HEU6j2y8GJtZ/aABIPd8kT2Gn+gysHaH0OC2BsoOnM05HA3PHDay91rV/40cwZ2n3ekC5sVrkL96/Cv7oKsdDiQf7rdyidXsj5rX1RkcanBeouyu7GE0GjgdUaoTAsAJNKW+R2sR9r/HjoOmS0=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 28991c901333d661663affdd91730ffe_ffc50cf9a6d311f1b67f525400dcc5b3
-    ReservedCode2: u9xJx2hvpl91mHpjyIFf4e6oCtcFS73UfloPPTSw3HEU6j2y8GJtZ/aABIPd8kT2Gn+gysHaH0OC2BsoOnM05HA3PHDay91rV/40cwZ2n3ekC5sVrkL96/Cv7oKsdDiQf7rdyidXsj5rX1RkcanBeouyu7GE0GjgdUaoTAsAJNKW+R2sR9r/HjoOmS0=
----
-
 # SimpleMarket · 带版税与出价的 NFT 市场合约
 
 一套从零手写的 Solidity 教学 + 工程实践项目：ERC20、ERC721、EIP-2981 版税、授权式 NFT 市场、买家出价（Offer）与 Pull Payment 资金体系，已完整部署至 Sepolia 测试网。
@@ -440,8 +429,8 @@ web3-contract-project/
 
 ```bash
 mkdir -p /root/web3-audit
-cp -r /mnt/c/Users/Administrator/Desktop/web3-contract-project/contracts /root/web3-audit/
-cp -r /mnt/c/Users/Administrator/Desktop/web3-contract-project/node_modules/@openzeppelin /root/web3-audit/
+cp -r /mnt/d/web3/web3-contract-project/contracts /root/web3-audit/
+cp -r /mnt/d/web3/web3-contract-project/node_modules/@openzeppelin /root/web3-audit/
 cd /root/web3-audit
 slither contracts/SimpleMarket.sol --solc /usr/local/bin/solc \
   --solc-remaps '@openzeppelin/=/root/web3-audit/@openzeppelin/'
@@ -697,4 +686,3 @@ cd frontend && node serve.js     # 然后打开 http://localhost:5173
 ## 免责说明
 
 本项目为**技术学习用途**，所有合约仅部署于 Sepolia 测试网，不涉及任何代币发行、融资或交易撮合业务。请勿将测试网私钥用于存放真实资产的钱包。
-*（内容由AI生成，仅供参考）*

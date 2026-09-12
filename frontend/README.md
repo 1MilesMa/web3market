@@ -1,14 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 28991c901333d661663affdd91730ffe_f0dc8894a83511f19281525400dcc5b3
-    ReservedCode1: gu1tNRejRfps7ktbcntsKDrsPZ76BfwNm4EtfCJWXDBERaYm79rJ2V+d3cBGivwXCHa7sCzOuVJ5egLvG0Ll43Kyl5uQNeppTDOMU3TnjTdtSlop7KAq0ScELfTRHJv8k0yCuwMHDP0Rs40XXDIJK63cYm8vNbi6ORuIVuaK8CugB++glg2St3jtJ7k=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 28991c901333d661663affdd91730ffe_f0dc8894a83511f19281525400dcc5b3
-    ReservedCode2: gu1tNRejRfps7ktbcntsKDrsPZ76BfwNm4EtfCJWXDBERaYm79rJ2V+d3cBGivwXCHa7sCzOuVJ5egLvG0Ll43Kyl5uQNeppTDOMU3TnjTdtSlop7KAq0ScELfTRHJv8k0yCuwMHDP0Rs40XXDIJK63cYm8vNbi6ORuIVuaK8CugB++glg2St3jtJ7k=
----
-
 # SimpleMarket 前端控制台
 
 一个纯静态的链上操作台：不打包、不编译、零框架，只靠 `ethers v6` 直接和 Sepolia 上的两个合约对话。
@@ -127,4 +116,3 @@ node scripts/verify-eip712-frontend.js   # 顺便验证签名算法仍与链上�
 - 私钥永远不进这个页面：所有签名都由钱包插件完成，页面只拿到签名结果
 - 页面不保存任何状态到服务器（根本没有服务器逻辑，`serve.js` 只发静态文件）
 - 合约侧采用 Pull Payment：合约从不主动给你转账，所有款项由你主动领取
-*（内容由AI生成，仅供参考）*

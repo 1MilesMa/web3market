@@ -2,22 +2,14 @@
   "network": "sepolia",
   "chainId": 11155111,
   "contract": "MyToken",
-  "address": "0xcc9f3027899899c743593E98be543B75B7BA0A05",
-  "txHash": "0xc867195d895c073a24f34dbf2a0bc0a19a6cb3664cd4cfe2c28013f0fb23fad4",
-  "blockNumber": 11613546,
-  "gasUsed": "725160",
-  "gasPriceWei": "1026455049",
-  "deployCostEth": "0.00074434414333284",
+  "address": "0x0D85B220d780D6BD462cC5931B6a79d00bCC0A18",
+  "txHash": "0x5d0973c3d8a5281d301af12b2d252c9aa91d6b4ff34d9e23be97cc84aa2350c4",
+  "blockNumber": 11649632,
+  "gasUsed": "709837",
+  "gasPriceWei": "1120517024",
+  "deployCostEth": "0.000795384442765088",
   "initialSupply": 1000000,
-  "owner": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+  "owner": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
   "openzeppelin": "5.6.1",
-  "deployedAt": "2026-09-01T15:40:05.539Z",
-  "ownerTransferredAtBlock": 11647801,
-  "ownerTransferTx": "0x4b4e388d7b9a912d213f55f53a112fdbd6dc87f930312199607ab03faa6db893",
-  "ownerNote": "2026-09-06 由部署者 EOA 直接 transferOwnership（Ownable 一笔到位，无需 accept）移交 MarketTimelock",
-  "governance": {
-    "timelock": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
-    "multisigOwner": "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
-    "minDelaySeconds": 300
-  }
+  "deployedAt": "2026-09-06T20:46:08.806Z"
 }
