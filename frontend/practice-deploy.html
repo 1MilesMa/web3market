@@ -1,0 +1,422 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>练习工具 · 给自己部署一份可铸造的 MyNFT</title>
+<style>
+:root{--bg:#0d1117;--panel:#161b22;--panel2:#0b0e13;--line:#21262d;--txt:#e6edf3;--dim:#8b949e;
+--acc:#2f81f7;--ok:#3fb950;--warn:#d29922;--err:#f85149;
+--mono:ui-monospace,Consolas,"Courier New",monospace}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--txt);
+font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:800px;margin:0 auto}
+h1{font-size:20px;margin:0 0 14px;font-weight:600}
+h1 span{font-size:12px;color:var(--dim);font-weight:400;margin-left:8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
+.card.hero{border-color:#1f6feb}
+.card h2{font-size:13px;margin:0 0 10px;color:var(--dim);font-weight:600;letter-spacing:.3px}
+p{margin:0 0 8px}
+.tip{color:var(--dim);font-size:12.5px}
+button{background:var(--acc);color:#fff;border:0;border-radius:6px;padding:9px 15px;font-size:14px;cursor:pointer}
+button.big{font-size:15px;padding:12px 22px;font-weight:600}
+button.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+button:disabled{opacity:.42;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.step{display:flex;gap:10px;align-items:flex-start;margin-bottom:16px}
+.step .n{flex:0 0 24px;height:24px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);
+color:var(--dim);font-family:var(--mono);font-size:12px;display:flex;align-items:center;justify-content:center}
+.step .b{flex:1;min-width:0}
+.step .b b{display:block;margin-bottom:5px}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:5px 12px;font-family:var(--mono);font-size:12.5px;margin-top:6px}
+.kv i{color:var(--dim);font-style:normal}
+code{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:12px}
+a{color:var(--acc)}
+#log{height:190px;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+padding:10px;font-family:var(--mono);font-size:12px}
+.lg{margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #1a1f27;white-space:pre-wrap;word-break:break-all}
+.lg:last-child{border-bottom:0}
+.lg i{color:#6e7681;font-style:normal;margin-right:6px}
+.lg.i{color:var(--txt)}.lg.s{color:var(--ok)}.lg.w{color:var(--warn)}.lg.e{color:var(--err)}
+.mono{font-family:var(--mono);word-break:break-all}
+.ok{color:var(--ok)}
+.pill{font-size:11px;font-family:var(--mono);padding:2px 8px;border-radius:99px;background:rgba(139,148,158,.16);color:var(--dim)}
+.pill.on{background:rgba(63,185,80,.16);color:var(--ok)}
+.pill.err{background:rgba(248,81,73,.16);color:var(--err)}
+.sep{height:1px;background:var(--line);margin:16px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>练习工具<span>给自己部署一份可铸造的 MyNFT · Sepolia</span></h1>
+
+  <div class="card hero">
+    <h2>最短路径</h2>
+    <div class="row" style="margin-bottom:10px">
+      <button id="btnConnect" class="big">1. 连接钱包</button>
+      <span id="netPill" class="pill">未连接</span>
+      <span id="acctPill" class="pill">-</span>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <button id="btnAll" class="big" disabled>2. 一键跑完：部署 + 开铸造 + 铸造 + 授权</button>
+    </div>
+    <p class="tip">点完第 2 步，MetaMask 会<b>连着弹 4 次确认</b>，每次都点「确认」就行（第一次是连接授权，后面 4 次是交易）。
+    中间任何一步失败会自动停下，日志里会写是哪一步、为什么。</p>
+    <p class="tip">不想一键跑也可以不用，下面 4 个按钮可以单独点。</p>
+  </div>
+
+  <div class="card">
+    <h2>这个页面解决什么问题</h2>
+    <p>链上原来那套 MyNFT 的 owner 已经交给时间锁合约了，<b>任何人都开不了铸造开关</b>。所以访客在你的操作台连一枚 NFT 都造不出来，自然也就没法体验挂单和买入。</p>
+    <p>这个页面用<b>你自己的钱包</b>部署一份新的 <code>MyNFT</code>，owner 就是你本人，然后把铸造开关打开。</p>
+    <p class="tip">新 NFT 是标准 ERC721，市场合约是通用的（<code>list()</code> 接受任意 NFT 地址），所以<b>不需要重新部署市场</b>——做完直接把地址填进操作台的「NFT 合约」输入框。</p>
+  </div>
+
+  <div class="card">
+    <h2>四个步骤（可单独点）</h2>
+
+    <div class="step">
+      <div class="n">1</div>
+      <div class="b">
+        <b>连接钱包</b>
+        <div class="row">
+          <button id="btnConnect2" class="small">连接钱包（同上）</button>
+        </div>
+        <p class="tip">必须是 Sepolia 测试网。网络不对会自动请求切换。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="n">2</div>
+      <div class="b">
+        <b>部署 MyNFT</b>
+        <div class="row"><button id="btnDeploy" disabled>部署 MyNFT</button></div>
+        <div class="kv">
+          <i>initialOwner</i><span id="pOwner">连接钱包后自动填成你的地址</span>
+          <i>maxSupply</i><span>10000</span>
+          <i>royaltyReceiver</i><span>同 initialOwner（版税回到你自己）</span>
+          <i>royaltyFeeNumerator</i><span>500（= 5%）</span>
+        </div>
+        <p class="tip">gas 大约 0.002 ~ 0.005 ETH。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="n">3</div>
+      <div class="b">
+        <b>打开公开铸造</b>
+        <div class="row"><button id="btnEnable" disabled>setPublicMintEnabled(true)</button></div>
+        <p class="tip">合约默认是关的（安全设计）。你是 owner，所以你能开。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="n">4</div>
+      <div class="b">
+        <b>铸造一枚，并授权给市场</b>
+        <div class="row">
+          <button id="btnMint" disabled>铸造一枚</button>
+          <button id="btnApprove" class="ghost" disabled>授权市场</button>
+          <span id="mintPill" class="pill">没铸造</span>
+          <span id="apprPill" class="pill">未授权</span>
+        </div>
+        <p class="tip">授权的作用：让市场合约在成交那一刻能把 NFT 从你钱包转给买家。撤单不会撤销授权。</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>结果</h2>
+    <div class="kv">
+      <i>新 MyNFT 地址</i><span class="mono" id="addr">（还没部署）</span>
+      <i>你的 tokenId</i><span class="mono" id="tokenId">-</span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="btnCopy" class="ghost small" disabled>复制 NFT 地址</button>
+      <button id="btnCopy2" class="ghost small" disabled>复制 tokenId</button>
+      <button id="btnReset" class="ghost small">清空记录（想重新部署时用）</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>做完之后去操作台</h2>
+    <p>打开 <a href="./" target="_blank">操作台</a>，在「挂单 / 撤单 / 改价」卡片里：</p>
+    <div class="kv">
+      <i>NFT 合约</i><span>粘贴上面那个新地址（默认填的是旧 NFT，要改掉）</span>
+      <i>TokenId</i><span>填上面显示的 tokenId（第一枚一般是 1）</span>
+      <i>价格(ETH)</i><span>随便填，比如 0.001</span>
+    </div>
+    <p class="tip">点「挂单」→ 再去「购买」卡片填同样的地址和 tokenId、价格 → 点「买入」。买家就是你自己，合约允许自己买自己的挂单，正好把分账走一遍。</p>
+  </div>
+
+  <div class="card">
+    <h2>日志</h2>
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<script src="vendor/ethers.umd.min.js"></script>
+<script>
+var ABI = [{"inputs":[{"internalType":"address","name":"initialOwner","type":"address"},{"internalType":"uint256","name":"maxSupply_","type":"uint256"},{"internalType":"address","name":"royaltyReceiver","type":"address"},{"internalType":"uint96","name":"royaltyFeeNumerator","type":"uint96"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"uint256","name":"numerator","type":"uint256"},{"internalType":"uint256","name":"denominator","type":"uint256"}],"name":"ERC2981InvalidDefaultRoyalty","type":"error"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC2981InvalidDefaultRoyaltyReceiver","type":"error"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"numerator","type":"uint256"},{"internalType":"uint256","name":"denominator","type":"uint256"}],"name":"ERC2981InvalidTokenRoyalty","type":"error"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC2981InvalidTokenRoyaltyReceiver","type":"error"},{"inputs":[],"name":"ERC721EnumerableForbiddenBatchMint","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721IncorrectOwner","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721InsufficientApproval","type":"error"},{"inputs":[{"internalType":"address","name":"approver","type":"address"}],"name":"ERC721InvalidApprover","type":"error"},{"inputs":[{"internalType":"address","name":"operator","type":"address"}],"name":"ERC721InvalidOperator","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"ERC721InvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"}],"name":"ERC721InvalidReceiver","type":"error"},{"inputs":[{"internalType":"address","name":"sender","type":"address"}],"name":"ERC721InvalidSender","type":"error"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ERC721NonexistentToken","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],"name":"ERC721OutOfBoundsIndex","type":"error"},{"inputs":[],"name":"EmptyTokenURI","type":"error"},{"inputs":[],"name":"EnforcedPause","type":"error"},{"inputs":[{"internalType":"uint256","name":"requested","type":"uint256"},{"internalType":"uint256","name":"maxSupply","type":"uint256"}],"name":"ExceedsMaxSupply","type":"error"},{"inputs":[],"name":"ExpectedPause","type":"error"},{"inputs":[{"internalType":"address","name":"caller","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"NotAuthorizedToBurn","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"inputs":[],"name":"PublicMintDisabled","type":"error"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"approved","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"operator","type":"address"},{"indexed":false,"internalType":"bool","name":"approved","type":"bool"}],"name":"ApprovalForAll","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"_fromTokenId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"_toTokenId","type":"uint256"}],"name":"BatchMetadataUpdate","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"receiver","type":"address"},{"indexed":false,"internalType":"uint96","name":"feeNumerator","type":"uint96"}],"name":"DefaultRoyaltyUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"_tokenId","type":"uint256"}],"name":"MetadataUpdate","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferStarted","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Paused","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"bool","name":"enabled","type":"bool"}],"name":"PublicMintToggled","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"TokenRoyaltyReset","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"},{"indexed":true,"internalType":"address","name":"receiver","type":"address"},{"indexed":false,"internalType":"uint96","name":"feeNumerator","type":"uint96"}],"name":"TokenRoyaltyUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":true,"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"Transfer","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"address","name":"account","type":"address"}],"name":"Unpaused","type":"event"},{"inputs":[],"name":"acceptOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"string","name":"uri","type":"string"}],"name":"adminMintWithTokenId","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"approve","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"burn","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"getApproved","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"operator","type":"address"}],"name":"isApprovedForAll","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"maxSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"nextTokenId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"ownerOf","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pause","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"paused","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pendingOwner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"uri","type":"string"}],"name":"publicMint","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"publicMintEnabled","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"resetTokenRoyalty","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"royaltyDenominator","outputs":[{"internalType":"uint96","name":"","type":"uint96"}],"stateMutability":"pure","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"uint256","name":"salePrice","type":"uint256"}],"name":"royaltyInfo","outputs":[{"internalType":"address","name":"receiver","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"string","name":"uri","type":"string"}],"name":"safeMint","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"bytes","name":"data","type":"bytes"}],"name":"safeTransferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"operator","type":"address"},{"internalType":"bool","name":"approved","type":"bool"}],"name":"setApprovalForAll","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"receiver","type":"address"},{"internalType":"uint96","name":"feeNumerator","type":"uint96"}],"name":"setDefaultRoyalty","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bool","name":"enabled","type":"bool"}],"name":"setPublicMintEnabled","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"},{"internalType":"address","name":"receiver","type":"address"},{"internalType":"uint96","name":"feeNumerator","type":"uint96"}],"name":"setTokenRoyalty","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes4","name":"interfaceId","type":"bytes4"}],"name":"supportsInterface","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"index","type":"uint256"}],"name":"tokenByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"uint256","name":"index","type":"uint256"}],"name":"tokenOfOwnerByIndex","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"tokenURI","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalMinted","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"transferFrom","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"unpause","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+var BYTECODE = "0x60a060405234801561000f575f5ffd5b506040516126f03803806126f083398101604081905261002e9161026f565b8360405180604001604052806005815260200164135e53919560da1b815250604051806040016040528060048152602001631353919560e21b815250815f9081610078919061035f565b506001610085828261035f565b5050506001600160a01b0381166100b657604051631e4fbdf760e01b81525f60048201526024015b60405180910390fd5b6100bf81610145565b505f831161010f5760405162461bcd60e51b815260206004820152601560248201527f6d6178537570706c79206d757374206265203e2030000000000000000000000060448201526064016100ad565b60808390526001600f556011805460ff191690556001600160a01b0382161561013c5761013c8282610161565b50505050610419565b600e80546001600160a01b031916905561015e81610203565b50565b6127106001600160601b0382168110156101a057604051636f483d0960e01b81526001600160601b0383166004820152602481018290526044016100ad565b6001600160a01b0383166101c957604051635b6cc80560e11b81525f60048201526024016100ad565b50604080518082019091526001600160a01b039092168083526001600160601b039091166020909201829052600160a01b90910217600b55565b600d80546001600160a01b038381166001600160a01b0319831681179093556040519116919082907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a35050565b80516001600160a01b038116811461026a575f5ffd5b919050565b5f5f5f5f60808587031215610282575f5ffd5b61028b85610254565b9350602085015192506102a060408601610254565b60608601519092506001600160601b03811681146102bc575f5ffd5b939692955090935050565b634e487b7160e01b5f52604160045260245ffd5b600181811c908216806102ef57607f821691505b60208210810361030d57634e487b7160e01b5f52602260045260245ffd5b50919050565b601f82111561035a57805f5260205f20601f840160051c810160208510156103385750805b601f840160051c820191505b81811015610357575f8155600101610344565b50505b505050565b81516001600160401b03811115610378576103786102c7565b61038c8161038684546102db565b84610313565b6020601f8211600181146103be575f83156103a75750848201515b5f19600385901b1c1916600184901b178455610357565b5f84815260208120601f198516915b828110156103ed57878501518255602094850194600190920191016103cd565b508482101561040a57868401515f19600387901b60f8161c191681555b50505050600190811b01905550565b6080516122b161043f5f395f818161049f015281816110b6015261110201526122b15ff3fe608060405234801561000f575f5ffd5b5060043610610229575f3560e01c806375794a3c1161012a578063a2309ff8116100b4578063d5abeb0111610079578063d5abeb011461049a578063e30c3978146104c1578063e985e9c5146104d2578063f2fde38b146104e5578063fd8d7ed3146104f8575f5ffd5b8063a2309ff814610445578063b3d7acf91461044e578063b88d4fde14610461578063c87b56dd14610474578063d204c45e14610487575f5ffd5b80638a616bc0116100fa5780638a616bc0146103f35780638da5cb5b1461040657806395d89b4114610417578063a18c099e1461041f578063a22cb46514610432575f5ffd5b806375794a3c146103c857806379ba5097146103d0578063818668d7146103d85780638456cb59146103eb575f5ffd5b80632f745c59116101b65780635944c7531161017b5780635944c753146103755780635c975abb146103885780636352211e1461039a57806370a08231146103ad578063715018a6146103c0575f5ffd5b80632f745c59146103215780633f4ba83a1461033457806342842e0e1461033c57806342966c681461034f5780634f6ccce714610362575f5ffd5b8063095ea7b3116101fc578063095ea7b3146102aa5780630f4161aa146102bd57806318160ddd146102ca57806323b872dd146102dc5780632a55205a146102ef575f5ffd5b806301ffc9a71461022d57806304634d8d1461025557806306fdde031461026a578063081812fc1461027f575b5f5ffd5b61024061023b366004611bf7565b610508565b60405190151581526020015b60405180910390f35b610268610263366004611c43565b610518565b005b610272610575565b60405161024c9190611ca2565b61029261028d366004611cb4565b610604565b6040516001600160a01b03909116815260200161024c565b6102686102b8366004611ccb565b61062b565b6011546102409060ff1681565b6009545b60405190815260200161024c565b6102686102ea366004611cf3565b61063a565b6103026102fd366004611d2d565b6106c8565b604080516001600160a01b03909316835260208301919091520161024c565b6102ce61032f366004611ccb565b61074d565b6102686107b0565b61026861034a366004611cf3565b6107c2565b61026861035d366004611cb4565b6107e1565b6102ce610370366004611cb4565b610827565b610268610383366004611d4d565b61087c565b600e54600160a01b900460ff16610240565b6102926103a8366004611cb4565b6108de565b6102ce6103bb366004611d86565b6108e8565b61026861092d565b600f546102ce565b61026861093e565b6102686103e6366004611dae565b610982565b6102686109d1565b610268610401366004611cb4565b6109e1565b600d546001600160a01b0316610292565b610272610a24565b61026861042d366004611e05565b610a33565b610268610440366004611e5b565b610ac5565b6102ce60105481565b6102ce61045c366004611e83565b610ad0565b61026861046f366004611ed6565b610b0e565b610272610482366004611cb4565b610b26565b6102ce610495366004611fb3565b610b31565b6102ce7f000000000000000000000000000000000000000000000000000000000000000081565b600e546001600160a01b0316610292565b6102406104e0366004612002565b610b55565b6102686104f3366004611d86565b610b82565b604051612710815260200161024c565b5f61051282610bf3565b92915050565b610520610c17565b61052a8282610c44565b6040516001600160601b03821681526001600160a01b038316907fe12d7d5bdb8218a22277dca8f854dd4573a1cea3d3e4808dc567df9eb1c14bf49060200160405180910390a25050565b60605f80546105839061202a565b80601f01602080910402602001604051908101604052809291908181526020018280546105af9061202a565b80156105fa5780601f106105d1576101008083540402835291602001916105fa565b820191905f5260205f20905b8154815290600101906020018083116105dd57829003601f168201915b5050505050905090565b5f61060e82610ce6565b505f828152600460205260409020546001600160a01b0316610512565b610636828233610d1e565b5050565b6001600160a01b03821661066857604051633250574960e11b81525f60048201526024015b60405180910390fd5b5f610674838333610d2b565b9050836001600160a01b0316816001600160a01b0316146106c2576040516364283d7b60e01b81526001600160a01b038086166004830152602482018490528216604482015260640161065f565b50505050565b5f828152600c6020526040812080548291906001600160a01b03811690600160a01b90046001600160601b03168161071b575050600b546001600160a01b03811690600160a01b90046001600160601b03165b5f6127106107326001600160601b03841689612076565b61073c919061208d565b9295509193505050505b9250929050565b5f610757836108e8565b82106107885760405163295f44f760e21b81526001600160a01b03841660048201526024810183905260440161065f565b506001600160a01b03919091165f908152600760209081526040808320938352929052205490565b6107b8610c17565b6107c0610d37565b565b6107dc83838360405180602001604052805f815250610b0e565b505050565b5f6107eb826108de565b90506107f8813384610d8c565b61081e57604051637bc8521b60e01b81523360048201526024810183905260440161065f565b61063682610ded565b5f61083160095490565b82106108595760405163295f44f760e21b81525f60048201526024810183905260440161065f565b6009828154811061086c5761086c6120ac565b905f5260205f2001549050919050565b610884610c17565b61088f838383610e25565b6040516001600160601b03821681526001600160a01b0383169084907fe361b60b9164428d036a601ec08552e653bfe8c44389b8a4ebfd47281eb8741a906020015b60405180910390a3505050565b5f61051282610ce6565b5f6001600160a01b038216610912576040516322718ad960e21b81525f600482015260240161065f565b506001600160a01b03165f9081526003602052604090205490565b610935610c17565b6107c05f610ee5565b600e5433906001600160a01b031681146109765760405163118cdaa760e01b81526001600160a01b038216600482015260240161065f565b61097f81610ee5565b50565b61098a610c17565b6011805460ff19168215159081179091556040519081527fa81e445dac2343503dc87e4663774817434721db7d985310a6959766e6d4480e9060200160405180910390a150565b6109d9610c17565b6107c0610efe565b6109e9610c17565b5f818152600c602052604081205560405181907f0e6dc85545aec6da2e4702814198336dc5e52c107d879f264e71c3c2abeee92d905f90a250565b6060600180546105839061202a565b610a3b610c17565b610a43610f41565b5f819003610a64576040516317314b6160e01b815260040160405180910390fd5b600160105f828254610a7691906120c0565b90915550610a8690508484610f6c565b6106c28383838080601f0160208091040260200160405190810160405280939291908181526020018383808284375f92019190915250610f8592505050565b610636338383610fd4565b5f610ad9610f41565b60115460ff16610afc576040516309cc73a160e41b815260040160405180910390fd5b610b07338484611093565b9392505050565b610b1984848461063a565b6106c233858585856111aa565b6060610512826112d2565b5f610b3a610c17565b610b42610f41565b610b4d848484611093565b949350505050565b6001600160a01b039182165f90815260056020908152604080832093909416825291909152205460ff1690565b610b8a610c17565b600e80546001600160a01b0383166001600160a01b03199091168117909155610bbb600d546001600160a01b031690565b6001600160a01b03167f38d16b8cac22d99fc7c124b9cd0de2d3fa1faef420bfe791d8c362d765e2270060405160405180910390a350565b5f6001600160e01b0319821663152a902d60e11b148061051257506105128261134b565b600d546001600160a01b031633146107c05760405163118cdaa760e01b815233600482015260240161065f565b6127106001600160601b038216811015610c8357604051636f483d0960e01b81526001600160601b03831660048201526024810182905260440161065f565b6001600160a01b038316610cac57604051635b6cc80560e11b81525f600482015260240161065f565b50604080518082019091526001600160a01b039092168083526001600160601b039091166020909201829052600160a01b90910217600b55565b5f818152600260205260408120546001600160a01b03168061051257604051637e27328960e01b81526004810184905260240161065f565b6107dc838383600161136f565b5f610b4d848484611473565b610d3f61153e565b600e805460ff60a01b191690557f5db9ee0a495bf2e6ff9c91a7834c1ba4fdd244a5e8aa4e537bd38aeae4b073aa335b6040516001600160a01b03909116815260200160405180910390a1565b5f6001600160a01b03831615801590610b4d5750826001600160a01b0316846001600160a01b03161480610dc55750610dc58484610b55565b80610b4d5750505f908152600460205260409020546001600160a01b03908116911614919050565b5f610df95f835f610d2b565b90506001600160a01b03811661063657604051637e27328960e01b81526004810183905260240161065f565b6127106001600160601b038216811015610e6b5760405163dfd1fc1b60e01b8152600481018590526001600160601b03831660248201526044810182905260640161065f565b6001600160a01b038316610e9b57604051634b4f842960e11b8152600481018590525f602482015260440161065f565b506040805180820182526001600160a01b0393841681526001600160601b0392831660208083019182525f968752600c90529190942093519051909116600160a01b029116179055565b600e80546001600160a01b031916905561097f81611568565b610f06610f41565b600e805460ff60a01b1916600160a01b1790557f62e78cea01bee320cd4e420270b5ea74000d11b0c9f74754ebdbfc544b05a258610d6f3390565b600e54600160a01b900460ff16156107c05760405163d93c066560e01b815260040160405180910390fd5b610636828260405180602001604052805f8152506115b9565b5f828152600660205260409020610f9c8282612117565b506040518281527ff8e1a15aba9398e019f0b49df1a4fde98ee17ae345cb5f6b5e2c27f5033e8ce79060200160405180910390a15050565b6001600160a01b038316610ffd5760405163a9fbf51f60e01b81525f600482015260240161065f565b6001600160a01b03821661102f57604051630b61174360e31b81526001600160a01b038316600482015260240161065f565b6001600160a01b038381165f81815260056020908152604080832094871680845294825291829020805460ff191686151590811790915591519182527f17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c3191016108d1565b5f8181036110b4576040516317314b6160e01b815260040160405180910390fd5b7f00000000000000000000000000000000000000000000000000000000000000006010541061112e576010546110eb9060016120c0565b60405163adc3cee560e01b815260048101919091527f0000000000000000000000000000000000000000000000000000000000000000602482015260440161065f565b50600f8054906001905f61114283856120c0565b92505081905550600160105f82825461115b91906120c0565b9091555061116b90508482610f6c565b610b078184848080601f0160208091040260200160405190810160405280939291908181526020018383808284375f92019190915250610f8592505050565b6001600160a01b0383163b156112cb57604051630a85bd0160e11b81526001600160a01b0384169063150b7a02906111ec9088908890879087906004016121d2565b6020604051808303815f875af1925050508015611226575060408051601f3d908101601f191682019092526112239181019061220e565b60015b61128d573d808015611253576040519150601f19603f3d011682016040523d82523d5f602084013e611258565b606091505b5080515f0361128557604051633250574960e11b81526001600160a01b038516600482015260240161065f565b805160208201fd5b6001600160e01b03198116630a85bd0160e11b146112c957604051633250574960e11b81526001600160a01b038516600482015260240161065f565b505b5050505050565b60606112dd82610ce6565b505f6112f360408051602081019091525f815290565b90505f6112ff846115d0565b905081515f03611310579392505050565b80511561134257818160405160200161132a929190612240565b60405160208183030381529060405292505050919050565b610b4d8461166f565b5f6001600160e01b0319821663780e9d6360e01b14806105125750610512826116df565b808061138357506001600160a01b03821615155b15611444575f61139284610ce6565b90506001600160a01b038316158015906113be5750826001600160a01b0316816001600160a01b031614155b80156113d157506113cf8184610b55565b155b156113fa5760405163a9fbf51f60e01b81526001600160a01b038416600482015260240161065f565b81156114425783856001600160a01b0316826001600160a01b03167f8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b92560405160405180910390a45b505b50505f90815260046020526040902080546001600160a01b0319166001600160a01b0392909216919091179055565b5f5f611480858585611703565b90506001600160a01b0381166114dc576114d784600980545f838152600a60205260408120829055600182018355919091527f6e1540171b6c0c960b71a7020d9f60077f6af931a8bbf590da0223dacf75c7af0155565b6114ff565b846001600160a01b0316816001600160a01b0316146114ff576114ff81856117f5565b6001600160a01b03851661151b5761151684611872565b610b4d565b846001600160a01b0316816001600160a01b031614610b4d57610b4d8585611919565b600e54600160a01b900460ff166107c057604051638dfc202b60e01b815260040160405180910390fd5b600d80546001600160a01b038381166001600160a01b0319831681179093556040519116919082907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a35050565b6115c38383611967565b6107dc335f8585856111aa565b5f8181526006602052604090208054606091906115ec9061202a565b80601f01602080910402602001604051908101604052809291908181526020018280546116189061202a565b80156116635780601f1061163a57610100808354040283529160200191611663565b820191905f5260205f20905b81548152906001019060200180831161164657829003601f168201915b50505050509050919050565b606061167a82610ce6565b505f61169060408051602081019091525f815290565b90505f8151116116ae5760405180602001604052805f815250610b07565b806116b8846119c8565b6040516020016116c9929190612240565b6040516020818303038152906040529392505050565b5f6001600160e01b03198216632483248360e11b1480610512575061051282611a58565b5f828152600260205260408120546001600160a01b039081169083161561172f5761172f818486611aa7565b6001600160a01b038116156117695761174a5f855f5f61136f565b6001600160a01b0381165f90815260036020526040902080545f190190555b6001600160a01b03851615611797576001600160a01b0385165f908152600360205260409020805460010190555b5f8481526002602052604080822080546001600160a01b0319166001600160a01b0389811691821790925591518793918516917fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef91a4949350505050565b5f6117ff836108e8565b5f838152600860209081526040808320546001600160a01b0388168452600790925290912091925090818314611854575f83815260208281526040808320548584528184208190558352600890915290208290555b5f938452600860209081526040808620869055938552525081205550565b6009545f9061188390600190612254565b5f838152600a6020526040812054600980549394509092849081106118aa576118aa6120ac565b905f5260205f200154905080600983815481106118c9576118c96120ac565b5f918252602080832090910192909255828152600a9091526040808220849055858252812055600980548061190057611900612267565b600190038181905f5260205f20015f9055905550505050565b5f6001611925846108e8565b61192f9190612254565b6001600160a01b039093165f908152600760209081526040808320868452825280832085905593825260089052919091209190915550565b6001600160a01b03821661199057604051633250574960e11b81525f600482015260240161065f565b5f61199c83835f610d2b565b90506001600160a01b038116156107dc576040516339e3563760e11b81525f600482015260240161065f565b60605f6119d483611b0b565b60010190505f8167ffffffffffffffff8111156119f3576119f3611ec2565b6040519080825280601f01601f191660200182016040528015611a1d576020820181803683370190505b5090508181016020015b5f19016f181899199a1a9b1b9c1cb0b131b232b360811b600a86061a8153600a8504945084611a2757509392505050565b5f6001600160e01b031982166380ac58cd60e01b1480611a8857506001600160e01b03198216635b5e139f60e01b145b8061051257506301ffc9a760e01b6001600160e01b0319831614610512565b611ab2838383610d8c565b6107dc576001600160a01b038316611ae057604051637e27328960e01b81526004810182905260240161065f565b60405163177e802f60e01b81526001600160a01b03831660048201526024810182905260440161065f565b5f8072184f03e93ff9f4daa797ed6e38ed64bf6a1f0160401b8310611b495772184f03e93ff9f4daa797ed6e38ed64bf6a1f0160401b830492506040015b6d04ee2d6d415b85acef81000000008310611b75576d04ee2d6d415b85acef8100000000830492506020015b662386f26fc100008310611b9357662386f26fc10000830492506010015b6305f5e1008310611bab576305f5e100830492506008015b6127108310611bbf57612710830492506004015b60648310611bd1576064830492506002015b600a83106105125760010192915050565b6001600160e01b03198116811461097f575f5ffd5b5f60208284031215611c07575f5ffd5b8135610b0781611be2565b80356001600160a01b0381168114611c28575f5ffd5b919050565b80356001600160601b0381168114611c28575f5ffd5b5f5f60408385031215611c54575f5ffd5b611c5d83611c12565b9150611c6b60208401611c2d565b90509250929050565b5f81518084528060208401602086015e5f602082860101526020601f19601f83011685010191505092915050565b602081525f610b076020830184611c74565b5f60208284031215611cc4575f5ffd5b5035919050565b5f5f60408385031215611cdc575f5ffd5b611ce583611c12565b946020939093013593505050565b5f5f5f60608486031215611d05575f5ffd5b611d0e84611c12565b9250611d1c60208501611c12565b929592945050506040919091013590565b5f5f60408385031215611d3e575f5ffd5b50508035926020909101359150565b5f5f5f60608486031215611d5f575f5ffd5b83359250611d6f60208501611c12565b9150611d7d60408501611c2d565b90509250925092565b5f60208284031215611d96575f5ffd5b610b0782611c12565b80358015158114611c28575f5ffd5b5f60208284031215611dbe575f5ffd5b610b0782611d9f565b5f5f83601f840112611dd7575f5ffd5b50813567ffffffffffffffff811115611dee575f5ffd5b602083019150836020828501011115610746575f5ffd5b5f5f5f5f60608587031215611e18575f5ffd5b611e2185611c12565b935060208501359250604085013567ffffffffffffffff811115611e43575f5ffd5b611e4f87828801611dc7565b95989497509550505050565b5f5f60408385031215611e6c575f5ffd5b611e7583611c12565b9150611c6b60208401611d9f565b5f5f60208385031215611e94575f5ffd5b823567ffffffffffffffff811115611eaa575f5ffd5b611eb685828601611dc7565b90969095509350505050565b634e487b7160e01b5f52604160045260245ffd5b5f5f5f5f60808587031215611ee9575f5ffd5b611ef285611c12565b9350611f0060208601611c12565b925060408501359150606085013567ffffffffffffffff811115611f22575f5ffd5b8501601f81018713611f32575f5ffd5b803567ffffffffffffffff811115611f4c57611f4c611ec2565b604051601f8201601f19908116603f0116810167ffffffffffffffff81118282101715611f7b57611f7b611ec2565b604052818152828201602001891015611f92575f5ffd5b816020840160208301375f6020838301015280935050505092959194509250565b5f5f5f60408486031215611fc5575f5ffd5b611fce84611c12565b9250602084013567ffffffffffffffff811115611fe9575f5ffd5b611ff586828701611dc7565b9497909650939450505050565b5f5f60408385031215612013575f5ffd5b61201c83611c12565b9150611c6b60208401611c12565b600181811c9082168061203e57607f821691505b60208210810361205c57634e487b7160e01b5f52602260045260245ffd5b50919050565b634e487b7160e01b5f52601160045260245ffd5b808202811582820484141761051257610512612062565b5f826120a757634e487b7160e01b5f52601260045260245ffd5b500490565b634e487b7160e01b5f52603260045260245ffd5b8082018082111561051257610512612062565b601f8211156107dc57805f5260205f20601f840160051c810160208510156120f85750805b601f840160051c820191505b818110156112cb575f8155600101612104565b815167ffffffffffffffff81111561213157612131611ec2565b6121458161213f845461202a565b846120d3565b6020601f821160018114612177575f83156121605750848201515b5f19600385901b1c1916600184901b1784556112cb565b5f84815260208120601f198516915b828110156121a65787850151825560209485019460019092019101612186565b50848210156121c357868401515f19600387901b60f8161c191681555b50505050600190811b01905550565b6001600160a01b03858116825284166020820152604081018390526080606082018190525f9061220490830184611c74565b9695505050505050565b5f6020828403121561221e575f5ffd5b8151610b0781611be2565b5f81518060208401855e5f93019283525090919050565b5f610b4d61224e8386612229565b84612229565b8181038181111561051257610512612062565b634e487b7160e01b5f52603160045260245ffdfea2646970667358221220f3734db29dea598f66431b1ef6929a517931222dff0cfbba1ea8975b150a8da064736f6c634300081c0033";
+var MARKET = "0x71450D767f2b83722b88164316d7308DB20A39c8";
+var CHAIN_ID = "11155111";
+var K_ADDR = "practiceMyNFTAddress";
+var K_TOKEN = "practiceMyNFTTokenId";
+
+var provider, signer, account, nftAddress, running = false;
+
+function $(id) { return document.getElementById(id); }
+
+function log(msg, cls) {
+  var d = document.createElement("div");
+  d.className = "lg " + (cls || "i");
+  var t = new Date();
+  var hh = ("0" + t.getHours()).slice(-2), mm = ("0" + t.getMinutes()).slice(-2), ss = ("0" + t.getSeconds()).slice(-2);
+  d.innerHTML = "<i>" + hh + ":" + mm + ":" + ss + "</i>" + String(msg).replace(/</g, "&lt;");
+  $("log").appendChild(d);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+function short(a) { return a ? a.slice(0, 6) + "..." + a.slice(-4) : "-"; }
+
+function setConnected(on) {
+  $("btnDeploy").disabled = !on;
+  $("btnAll").disabled = !on;
+  if (!on) { $("btnEnable").disabled = true; $("btnMint").disabled = true; $("btnApprove").disabled = true; }
+  else if (nftAddress) { $("btnEnable").disabled = false; $("btnMint").disabled = false; $("btnApprove").disabled = false; }
+}
+
+function showAddr(a) {
+  nftAddress = a || null;
+  $("addr").textContent = nftAddress || "（还没部署）";
+  $("btnCopy").disabled = !nftAddress;
+  if (signer) setConnected(true);
+}
+
+function showToken(t) {
+  $("tokenId").textContent = t ? String(t) : "-";
+  $("mintPill").className = t ? "pill on" : "pill";
+  $("mintPill").textContent = t ? ("tokenId " + t) : "没铸造";
+  $("btnCopy2").disabled = !t;
+  if (t) localStorage.setItem(K_TOKEN, String(t));
+}
+
+function needSigner() {
+  if (!signer) { log("请先点「连接钱包」", "w"); return false; }
+  if (running) { log("正在执行中，请等当前动作结束", "w"); return false; }
+  return true;
+}
+
+async function connect() {
+  if (!window.ethereum) { log("没检测到钱包扩展。请先安装 MetaMask 并启用。", "e"); return false; }
+  try {
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    var net = await provider.getNetwork();
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    $("acctPill").textContent = short(account);
+    $("acctPill").className = "pill on";
+    $("pOwner").textContent = account;
+
+    if (String(net.chainId) !== CHAIN_ID) {
+      $("netPill").className = "pill err";
+      $("netPill").textContent = "网络不对: " + net.chainId;
+      log("当前 chainId = " + net.chainId + "，不是 Sepolia，正在请求切换...", "w");
+      try {
+        await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xaa36a7" }] });
+        net = await provider.getNetwork();
+      } catch (e) {
+        log("自动切换失败，请在 MetaMask 里手动切到 Sepolia，然后重新点「连接钱包」", "e");
+        return false;
+      }
+    }
+
+    if (String(net.chainId) !== CHAIN_ID) { log("网络仍不是 Sepolia，已停止", "e"); return false; }
+
+    $("netPill").className = "pill on";
+    $("netPill").textContent = "Sepolia";
+    log("已连接 " + account, "s");
+
+    var saved = localStorage.getItem(K_ADDR);
+    if (saved) { showAddr(saved); log("载入上次部署的地址：" + saved, "i"); }
+    setConnected(true);
+    var savedTok = localStorage.getItem(K_TOKEN);
+    if (savedTok) showToken(savedTok);
+    log("点「一键跑完」最省事；也可以按顺序单独点下面 4 个按钮。", "i");
+    return true;
+  } catch (e) {
+    log("连接失败: " + (e && e.message ? e.message : e), "e");
+    return false;
+  }
+}
+
+async function deploy() {
+  if (!signer) { log("请先点「连接钱包」", "w"); return false; }
+  try {
+    $("btnDeploy").disabled = true;
+    log("[部署] 正在发起部署交易...");
+    var Factory = new ethers.ContractFactory(ABI, BYTECODE, signer);
+    var c = await Factory.deploy(account, 10000, account, 500);
+    log("[部署] 交易已提交：" + c.deploymentTransaction().hash);
+    log("[部署] 等待上链确认（15~30 秒）...");
+    await c.waitForDeployment();
+    var addr = await c.getAddress();
+    localStorage.setItem(K_ADDR, addr);
+    showAddr(addr);
+    log("[部署] 成功！新 MyNFT 地址：" + addr, "s");
+    return true;
+  } catch (e) {
+    log("[部署] 失败: " + (e && e.message ? e.message : e), "e");
+    return false;
+  } finally {
+    setConnected(true);
+  }
+}
+
+async function enable() {
+  if (!signer) { log("请先点「连接钱包」", "w"); return false; }
+  if (!nftAddress) { log("还没有部署地址", "w"); return false; }
+  try {
+    $("btnEnable").disabled = true;
+    var c = new ethers.Contract(nftAddress, ABI, signer);
+    log("[开铸造] 正在调用 setPublicMintEnabled(true) ...");
+    var tx = await c.setPublicMintEnabled(true);
+    log("[开铸造] 交易已提交：" + tx.hash);
+    await tx.wait();
+    var on = await c.publicMintEnabled();
+    if (on) { log("[开铸造] 已打开 ✅", "s"); return true; }
+    log("[开铸造] 调用完成但开关仍是关的，请检查", "w");
+    return false;
+  } catch (e) {
+    log("[开铸造] 失败: " + (e && e.message ? e.message : e), "e");
+    return false;
+  } finally {
+    $("btnEnable").disabled = false;
+  }
+}
+
+async function mint() {
+  if (!signer) { log("请先点「连接钱包」", "w"); return false; }
+  if (!nftAddress) { log("还没有部署地址", "w"); return false; }
+  try {
+    $("btnMint").disabled = true;
+    var c = new ethers.Contract(nftAddress, ABI, signer);
+    log("[铸造] 正在铸造一枚（tokenURI = ipfs://practice）...");
+    var tx = await c.publicMint("ipfs://practice");
+    log("[铸造] 交易已提交：" + tx.hash);
+    var rc = await tx.wait();
+    var iface = new ethers.Interface(ABI);
+    var tid = null;
+    for (var i = 0; i < rc.logs.length; i++) {
+      try {
+        var p = iface.parseLog(rc.logs[i]);
+        if (p && p.name === "Transfer" && p.args[0] === ethers.ZeroAddress) tid = p.args[2].toString();
+      } catch (e) {}
+    }
+    if (tid) { showToken(tid); log("[铸造] 成功！你的 tokenId = " + tid, "s"); return true; }
+    log("[铸造] 交易成功，但没解析出 tokenId", "w");
+    return false;
+  } catch (e) {
+    log("[铸造] 失败: " + (e && e.message ? e.message : e), "e");
+    return false;
+  } finally {
+    $("btnMint").disabled = false;
+  }
+}
+
+async function approve() {
+  if (!signer) { log("请先点「连接钱包」", "w"); return false; }
+  if (!nftAddress) { log("还没有部署地址", "w"); return false; }
+  try {
+    $("btnApprove").disabled = true;
+    var c = new ethers.Contract(nftAddress, ABI, signer);
+    var already = await c.isApprovedForAll(account, MARKET);
+    log("[授权] 当前：" + (already ? "已授权" : "未授权") + "，本次将设为 " + (!already ? "已授权" : "取消授权"));
+    var tx = await c.setApprovalForAll(MARKET, !already);
+    log("[授权] 交易已提交：" + tx.hash);
+    await tx.wait();
+    var now = await c.isApprovedForAll(account, MARKET);
+    $("apprPill").className = now ? "pill on" : "pill";
+    $("apprPill").textContent = now ? "已授权" : "未授权";
+    log(now ? "[授权] 已授权给市场 ✅" : "[授权] 已取消授权", now ? "s" : "i");
+    return now;
+  } catch (e) {
+    log("[授权] 失败: " + (e && e.message ? e.message : e), "e");
+    return false;
+  } finally {
+    $("btnApprove").disabled = false;
+  }
+}
+
+async function runAll() {
+  if (!signer) { log("请先点「连接钱包」", "w"); return; }
+  running = true;
+  $("btnAll").disabled = true;
+  try {
+    log("===== 一键跑完开始 =====", "i");
+
+    if (!nftAddress) {
+      log("第 1/4 步：部署 MyNFT", "i");
+      if (!await deploy()) { log("===== 部署失败，已停止 =====", "e"); return; }
+    } else {
+      log("第 1/4 步：已有部署地址，跳过部署", "i");
+    }
+
+    log("第 2/4 步：打开铸造开关", "i");
+    if (!await enable()) { log("===== 开铸造失败，已停止 =====", "e"); return; }
+
+    log("第 3/4 步：铸造一枚", "i");
+    if (!await mint()) { log("===== 铸造失败，已停止 =====", "e"); return; }
+
+    log("第 4/4 步：授权市场", "i");
+    if (!await approve()) { log("===== 授权失败，已停止 =====", "e"); return; }
+
+    log("===== 全部完成！去操作台挂单吧 =====", "s");
+  } finally {
+    running = false;
+    $("btnAll").disabled = false;
+  }
+}
+
+function copy(txt, what) {
+  navigator.clipboard.writeText(txt).then(function () {
+    log("已复制" + what + "：" + txt, "s");
+  }).catch(function () {
+    log("复制失败，请手动选中复制：" + txt, "w");
+  });
+}
+
+function reset() {
+  localStorage.removeItem(K_ADDR);
+  localStorage.removeItem(K_TOKEN);
+  nftAddress = null;
+  showAddr(null);
+  showToken(null);
+  log("已清空本地记录（链上的合约不会消失，只是这个页面不再记着它）", "w");
+}
+
+window.addEventListener("load", function () {
+  $("btnConnect").onclick = connect;
+  $("btnConnect2").onclick = connect;
+  $("btnAll").onclick = runAll;
+  $("btnDeploy").onclick = deploy;
+  $("btnEnable").onclick = enable;
+  $("btnMint").onclick = mint;
+  $("btnApprove").onclick = approve;
+  $("btnCopy").onclick = function () { copy(nftAddress, " NFT 地址"); };
+  $("btnCopy2").onclick = function () { copy($("tokenId").textContent, " tokenId"); };
+  $("btnReset").onclick = reset;
+  var saved = localStorage.getItem(K_ADDR);
+  if (saved) showAddr(saved);
+  var savedTok = localStorage.getItem(K_TOKEN);
+  if (savedTok) showToken(savedTok);
+  log("页面就绪。第一步：点「连接钱包」。");
+});
+</script>
+</body>
+</html>
