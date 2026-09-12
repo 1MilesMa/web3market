@@ -2,6 +2,10 @@
 
 > 从零手写的 Solidity 工程实践项目：ERC20 / ERC721、EIP-2981 版税、授权式 NFT 市场、买家出价、EIP-712 免 gas 挂单、Pull Payment 资金体系，以及 2/3 多签 + 时间锁的链上治理。全部部署在 Sepolia 测试网，源码与验证材料开源。
 
+**在线演示**：[web3market-frontend.pages.dev](https://web3market-frontend.pages.dev)（国内可直连）　·　[web3market-frontend.vercel.app](https://web3market-frontend.vercel.app)（海外）
+
+连上钱包即可操作：挂单 / 撤单 / 改价 / 买入、EIP-712 签名挂单与成交、出价、资金领取。
+
 **一句话定位**：一个**授权式** NFT 市场——挂单时 NFT 不离开卖家钱包，只在成交瞬间由合约代转移；管理权也不放在任何一个人手里，而是「3 人共管、2 票放行」的多签，再叠加「排队 → 公示 → 执行」的时间锁。
 
 | 项目状态 | |

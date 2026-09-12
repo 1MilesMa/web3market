@@ -3,7 +3,7 @@
 window.APP_CONFIG = {
   "chainId": 11155111,
   "chainName": "Sepolia",
-  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
+  "rpcUrl": "https://sepolia.gateway.tenderly.co",
   "explorer": "https://sepolia.etherscan.io",
   "contracts": {
     "MyNFT": {
