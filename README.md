@@ -54,7 +54,7 @@
 |---|---|---|
 | 单元测试 | 303 passing / 0 failing | `npx hardhat test` |
 | 覆盖率 | `SimpleMarket` 四项指标 100% | `npx hardhat coverage` |
-| 恶意场景 | 15 个攻击合约主动触发修饰符的失败分支（重入、拒收 ETH、假 ERC721 接收器） | `contracts/mocks/MaliciousActors.sol` |
+| 恶意场景 | 13 个攻击合约主动触发修饰符的失败分支（重入、拒收 ETH、假 ERC721 接收器） | `contracts/mocks/MaliciousActors.sol` |
 | 静态分析 | Slither 两轮，零中高危 | `slither .`（Windows 下需 WSL，过程见下方章节） |
 | 源码验证 | 5 个地址 Sourcify `exact_match` | 点上方链接 |
 | 治理实战 | 改费率生效 / 单人 1 票被拒 / 还原，全部链上实跑 | `scripts/verify-multisig-governance.js` |
@@ -117,11 +117,11 @@ cd frontend && node serve.js   # 打开 http://localhost:5173 进入链上操作
 | 合约 | 体积 | 职责与关键设计 |
 |---|---|---|
 | `contracts/HelloWeb3.sol` | 2.5 KB | 环境连通性验证用的最小合约，确认编译/部署链路可用 |
-| `contracts/MyToken.sol` | 6.1 KB | ERC20 实现，练习 mint / approve / transferFrom 标准语义 |
-| `contracts/MyNFT.sol` | 29.4 KB | ERC721 + **EIP-2981 版税**；`maxSupply = 10000`；支持 `setDefaultRoyalty` 调整版税；版税收款由 `withdrawRoyalties` 自取；**Ownable2Step** 两步转移所有权 + **Pausable** 紧急暂停（只挡铸造，不挡转移） |
-| `contracts/SimpleMarket.sol` | 45.3 KB | 核心市场：挂单/购买/出价/版税分账/Pull Payment/重入防护；**Ownable2Step** 两步转移所有权 + **Pausable** 紧急暂停（只挡开仓、不挡退出） |
+| `contracts/MyToken.sol` | 6.0 KB | ERC20 实现，练习 mint / approve / transferFrom 标准语义 |
+| `contracts/MyNFT.sol` | 30.8 KB | ERC721 + **EIP-2981 版税**；`maxSupply = 10000`；支持 `setDefaultRoyalty` 调整版税；版税收款由 `withdrawRoyalties` 自取；**Ownable2Step** 两步转移所有权 + **Pausable** 紧急暂停（只挡铸造，不挡转移） |
+| `contracts/SimpleMarket.sol` | 53.1 KB | 核心市场：挂单/购买/出价/版税分账/Pull Payment/重入防护；**Ownable2Step** 两步转移所有权 + **Pausable** 紧急暂停（只挡开仓、不挡退出） |
 | `contracts/MultiSigOwner.sol` | 19.9 KB | 2/3 多签治理钱包：`submit` / `confirm` / `revoke` / `execute`，成员与阈值可自管理（`onlySelf`），用来接手市场 owner，消灭单人单点故障 |
-| `contracts/mocks/MaliciousActors.sol` | 25.6 KB | 15 个攻击面合约（重入、拒收 ETH、假 ERC721 接收器等），专供测试使用，**不可部署到生产** |
+| `contracts/mocks/MaliciousActors.sol` | 28.0 KB | 13 个攻击面合约（重入、拒收 ETH、假 ERC721 接收器等），专供测试使用，**不可部署到生产** |
 
 **SimpleMarket 的能力边界**：授权式挂单（`listing` 而非托管）、一口价购买（`buy`）、买家出价（`makeOffer` / `withdrawOffer` / `rejectOffer` / `acceptOffer`）、平台费提取（`withdrawFees`，上限 `MAX_FEE_BPS = 1000` 即 10%）、待领池自取（`withdrawPendingFunds`）。
 
@@ -450,7 +450,7 @@ web3-contract-project/
 │  ├─ MyNFT.sol              ERC721 + EIP-2981 版税
 │  ├─ SimpleMarket.sol       市场 + 出价 + Pull Payment
 │  ├─ MultiSigOwner.sol      2/3 多签治理钱包（接手 owner 用）
-│  └─ mocks/MaliciousActors.sol   15 个攻击面合约
+│  └─ mocks/MaliciousActors.sol   13 个攻击面合约
 ├─ test/
 │  ├─ SimpleMarket.test.js   202 条用例的主战场
 │  ├─ MultiSigOwner.test.js  多签专项 56 条（含接管市场实战）
