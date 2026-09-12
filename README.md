@@ -1,12 +1,92 @@
-# SimpleMarket · 带版税与出价的 NFT 市场合约
+# SimpleMarket · 带版税、出价与链上治理的 NFT 市场合约
 
-一套从零手写的 Solidity 教学 + 工程实践项目：ERC20、ERC721、EIP-2981 版税、授权式 NFT 市场、买家出价（Offer）与 Pull Payment 资金体系，已完整部署至 Sepolia 测试网。
+> 从零手写的 Solidity 工程实践项目：ERC20 / ERC721、EIP-2981 版税、授权式 NFT 市场、买家出价、EIP-712 免 gas 挂单、Pull Payment 资金体系，以及 2/3 多签 + 时间锁的链上治理。全部部署在 Sepolia 测试网，源码与验证材料开源。
 
-**电梯陈述（三句话）**
+**一句话定位**：一个**授权式** NFT 市场——挂单时 NFT 不离开卖家钱包，只在成交瞬间由合约代转移；管理权也不放在任何一个人手里，而是「3 人共管、2 票放行」的多签，再叠加「排队 → 公示 → 执行」的时间锁。
 
-1. 我写了一个**授权式**的 NFT 市场合约——挂单时 NFT 不离开卖家钱包，只在成交瞬间由合约代转移，比转账托管式市场省一半 gas。
-2. 它支持**买家出价**：同一枚 NFT 可被任意多人同时出价、资金由合约托管，成交走统一的 `_settleSale()` 完成「平台费 → 版税 → 卖家」三方分账。
-3. 所有对外转账一律走 **Pull Payment**（先记账、收款人自取），宁可把钱留在待领池，也绝不让一笔失败的退款卡死整个交易——这是整套合约最核心的工程决策。
+| 项目状态 | |
+|---|---|
+| 网络 | Sepolia 测试网（chainId `11155111`） |
+| 合约 | 5 个地址，**全部通过 Sourcify `exact_match` 源码验证** |
+| 测试 | **303 passing / 0 failing** |
+| 覆盖率 | `SimpleMarket` 语句 / 分支 / 函数 / 行 **全部 100%** |
+| 静态分析 | 两轮 Slither：首轮 47 条命中全部为 INFO，治理接管后复检零中高危 |
+| 治理 | 2/3 多签 + 300 秒公示时间锁，`admin = address(0)`（连改延迟本身也要再走一次公示） |
+| 安全边界 | **测试网演示项目，已通过自测与静态分析，未经第三方人工审计，不可用于承载真实资产** |
+
+---
+
+## 已部署合约（Sepolia 测试网）
+
+| 合约 | 地址 | 部署区块 | 源码验证 |
+|---|---|---|---|
+| `SimpleMarket` 市场 | [`0x71450D767f2b83722b88164316d7308DB20A39c8`](https://sepolia.etherscan.io/address/0x71450D767f2b83722b88164316d7308DB20A39c8) | 11631015 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0x71450D767f2b83722b88164316d7308DB20A39c8/) |
+| `MyNFT` ERC721 + 版税 | [`0x9EFe00123a6A22d903D63E195B7E87Bf3622412e`](https://sepolia.etherscan.io/address/0x9EFe00123a6A22d903D63E195B7E87Bf3622412e) | 11631013 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0x9EFe00123a6A22d903D63E195B7E87Bf3622412e/) |
+| `MultiSigOwner` 2/3 多签 | [`0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317`](https://sepolia.etherscan.io/address/0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317) | 11637734 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317/) |
+| `MarketTimelock` 时间锁 | [`0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119`](https://sepolia.etherscan.io/address/0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119) | 11638781 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119/) |
+
+> `SimpleMarket` / `MyNFT` 的 owner 已收口到 `MarketTimelock`——单人已经改不了费率，两人串通也要先公示 300 秒。练手合约 `MyToken` 的 owner 请以链上 `owner()` 实时值为准：部署产物 `deployments\*.json` 里的 `owner` 只是部署那一刻的快照，治理移交不会自动回写。
+> `exact_match` 表示链上字节码与公开源码 + 编译设置在**字节级完全一致**，任何人都能独立核对；Etherscan 域名在本机网络不可达，故验证走 Sourcify 完成，离线验证包见 `verify-bundle/`。
+> 项目另有两个练手合约 `HelloWeb3`、`MyToken`（ERC20），与业务逻辑无关，不应进入生产；完整地址与部署 gas 见下方「已部署合约」章节。
+
+---
+
+## 三个值得看的工程决策
+
+**1. 授权式挂单，而不是托管式**
+挂单只登记价格，NFT 始终留在卖家钱包，成交瞬间凭 `setApprovalForAll` 由合约代转移。少一次转账、少一份托管风险：合约被攻破也不会批量失窃。
+
+**2. 全量 Pull Payment**
+平台费、版税、退回的出价款一律先记账，由收款人主动 `withdraw*` 领取；合约从不主动向外部地址转钱。防 DoS 的设计同理——`rejectOffer` 遇到拒收 ETH 的买家**不 revert**，把钱转入待领池，卖家不会被恶意买家卡死。
+
+**3. EIP-712 免 gas 挂单**
+卖家离线签 `ListingIntent`（nft + tokenId + price + nonce + deadline），买家带签名调 `fulfillListing` 一次成交。**卖家挂单零 gas**，本地实测总 gas 从 228,283 降到 135,600（省约 40%）。防重放三重保障：nonce 用后即焚、deadline 过期失效、`chainId` + 合约地址做域分隔。
+
+---
+
+## 质量证据（都能自己跑出来）
+
+| 证据 | 数值 | 怎么复现 |
+|---|---|---|
+| 单元测试 | 303 passing / 0 failing | `npx hardhat test` |
+| 覆盖率 | `SimpleMarket` 四项指标 100% | `npx hardhat coverage` |
+| 恶意场景 | 15 个攻击合约主动触发修饰符的失败分支（重入、拒收 ETH、假 ERC721 接收器） | `contracts/mocks/MaliciousActors.sol` |
+| 静态分析 | Slither 两轮，零中高危 | `slither .`（Windows 下需 WSL，过程见下方章节） |
+| 源码验证 | 5 个地址 Sourcify `exact_match` | 点上方链接 |
+| 治理实战 | 改费率生效 / 单人 1 票被拒 / 还原，全部链上实跑 | `scripts/verify-multisig-governance.js` |
+
+---
+
+## 快速开始
+
+```bash
+git clone https://github.com/1MilesMa/web3market.git
+cd web3market
+npm install
+
+cp .env.example .env      # 填入 SEPOLIA_RPC_URL 与测试网专用私钥，切勿使用存有真实资产的钱包
+
+npx hardhat compile       # 预期零警告
+npx hardhat test          # 预期 303 passing
+npx hardhat coverage
+
+cd frontend && node serve.js   # 打开 http://localhost:5173 进入链上操作台
+```
+
+`frontend/` 是一个零框架的纯静态操作台，用 ethers v6 直连 Sepolia，覆盖挂单 / 改价 / 撤单 / 买入 / 签名挂单 / 出价 / 三笔资金领取，并把 20 余种 revert 原因翻译成中文。
+
+---
+
+## 已知限制（如实披露）
+
+| # | 限制 | 说明 |
+|---|---|---|
+| 1 | **未经第三方人工审计** | 现有证据是自测 + 覆盖率 + Slither，不能替代对业务逻辑与经济模型的穿透式审查 |
+| 2 | **合约不可升级** | 刻意不用代理：零升级后门，代价是发现 bug 只能换合约，旧数据不迁移 |
+| 3 | **时间锁延迟仅 300 秒** | 演示取值，主网建议 24–72 小时；改延迟无后门，同样要走公示 |
+| 4 | **暂停权是中心化开关** | 2 人即可冻结全部开仓（不冻结取款）。刻意设计，需配套公示与监控 |
+| 5 | **版税只在市场内强制** | EIP-2981 由本市场执行，场外转账与其他市场可以不付 |
+| 6 | **公共 RPC 无 SLA** | 实测限流返回 HTTP 403；主网须配付费节点 + 备用 |
 
 ---
 
@@ -48,7 +128,7 @@
 | 合约 | 地址 | 区块 | 部署 gas | 关键参数 |
 |---|---|---|---|---|
 | HelloWeb3 | `0x07f6736520685181c22bd0B58714C7a30B92bb3a` | 11613406 | 670,426 | — |
-| MyToken | `0xcc9f3027899899c743593E98be543B75B7BA0A05` | 11613546 | 725,160 | ERC20 |
+| MyToken（现行） | `0x0D85B220d780D6BD462cC5931B6a79d00bCC0A18` | 11649632 | 709,837 | ERC20，练手合约；旧地址 `0xcc9f3027…BA0A05` 已作废 |
 | MyNFT | `0x9EFe00123a6A22d903D63E195B7E87Bf3622412e` | 11631013 | 2,108,841 | 版税 5%（500/10000），receiver = owner；**现任 owner = MarketTimelock（2026-09-06 移交完成）** |
 | **SimpleMarket（现行 · 含 EIP-712）** | **`0x71450D767f2b83722b88164316d7308DB20A39c8`** | 11631015 | 2,582,768 | `feeBps = 250`（2.5%），**现任 owner = MarketTimelock**（2026-09-05 由多签移交，详见第九节），支持 `fulfillListing` / `listingNonces` |
 | **MultiSigOwner（2/3 治理）** | **`0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317`** | 11637734 | 1,336,270 | 成员 3 人、阈值 2；先接管 SimpleMarket owner，再作为**时间锁唯一 proposer / canceller** 继续掌权（2026-09-05，10 笔交易、gas 939,152） |
@@ -60,6 +140,7 @@
 - `0x1948fDC7…3c15e` —— SimpleMarket（2026-09-04 部署），已被**治理加固版**取代（新增 Ownable2Step + Pausable）。
 - `0x3FeEf51d7a180C2DCA7C8CB2794F421132cF2FE8` —— 出价版市场，**不含 EIP-712**，已被 2026-09-03 重部署的签名挂单版取代。
 - `0x009A41338277B4180576cAf893596E0278bC8538` —— 版税版市场，已被出价版取代。
+- `0xcc9f3027899899c743593E98be543B75B7BA0A05` —— 旧 MyToken，已被 2026-09-06 重部署的现行版取代。
 - `0x5C81D2DA…5B46` —— 初版市场，部署记录已被后续部署覆盖，仅存地址前缀。
 
 > **换合约 = 换受托方**：每部署一次新市场，卖家必须重新对该地址执行 `setApprovalForAll`，旧授权对新合约无效。旧市场的 `listing` / `offer` 数据不迁移。
