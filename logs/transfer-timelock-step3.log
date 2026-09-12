@@ -1,0 +1,51 @@
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+====================================================================
+市场 owner 移交时间锁 —— Sepolia 实战（可重入）
+====================================================================
+  市场   : 0x71450D767f2b83722b88164316d7308DB20A39c8
+  多签   : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+  时间锁 : 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+  公示期 : 300 秒
+  账号 1 : 0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8
+  账号 2 : 0xb9a429a3b101015DdeE57569360b73c36E646a32
+  账号 3 : 0x38e1969A889bF4912919D4b93cdF3c06dC6cd72a
+
+当前 owner : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+
+[第 1 步] 多签提名时间锁接任 owner
+  [复用] pendingOwner 已经是时间锁，跳过提名。
+  pendingOwner = 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+  owner        = 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317 （仍是多签 —— 交接期无权力真空）
+
+[第 2 步] 多签排队「时间锁接受 owner」
+  操作 id : 0x933fe65483696e547bab9e73d0cc2a2a8f75f0ee022bd7cf86d066079244469c
+  当前状态: Ready
+  [复用] 该操作已排队，跳过。
+
+[第 3 步] 等待公示结束
+  操作状态: Ready
+  ✓ 公示已结束，操作可执行
+
+[第 4 步] 触发执行（任何人都能点，这里用账号 1 代劳）
+  ✓ execute(acceptOwnership)
+    https://sepolia.etherscan.io/tx/0x93c7e6a0ba21b608fd607d80248e496f2e63933e5f423d29985fbf7a6c92a987   (区块 11638841, gas 45280)
+
+[验证]
+  市场 owner   : 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+  是否已易主   : 是 ✓
+
+  账号 1 想绕过多签和时间锁，直接把费率改成 999 bps（约 10%）……
+  [被拒] execution reverted
+  结论：单人再也动不了任何参数 —— 必须 2 票通过 + 公示满点。
+
+最终状态
+  市场 owner : 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+  市场费率   : 250n bps
+  时间锁延迟 : 300 秒
+  多签提案数 : 6n
+
+  治理链路：成员提交 → 2 票通过 → 排队公示 300 秒 → 任何人执行
+
+https://sepolia.etherscan.io/address/0x71450D767f2b83722b88164316d7308DB20A39c8
+https://sepolia.etherscan.io/address/0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+

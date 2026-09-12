@@ -4,3 +4,15 @@ artifacts/
 .env
 *.log
 .DS_Store
+# 证据日志随仓库发布（README 里的 logs/ 引用要能在 GitHub 上直接打开）
+!logs/*.log
+!offer-sepolia.log
+!eip712-*.log
+!practice-offer-hardhat.log
+!slither-multisig.log
+!transfer-multisig-sepolia.log
+!verify-multisig-sepolia.log
+!compile.log
+!solc-compile.log
+!practice-multisig.log
+!restore-fee.log

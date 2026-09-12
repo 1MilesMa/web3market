@@ -1,0 +1,19 @@
+npm error code ERESOLVE
+npm error ERESOLVE unable to resolve dependency tree
+npm error
+npm error While resolving: web3-contract-project@1.0.0
+npm error Found: hardhat@2.29.1
+npm error node_modules/hardhat
+npm error   dev hardhat@"^2.29.1" from the root project
+npm error
+npm error Could not resolve dependency:
+npm error peer hardhat@"^3.12.0" from @nomicfoundation/hardhat-verify@3.1.0
+npm error node_modules/@nomicfoundation/hardhat-verify
+npm error   dev @nomicfoundation/hardhat-verify@"*" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry this command with --force or --legacy-peer-deps to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error C:\Users\Administrator\AppData\Local\npm-cache\_logs\2026-09-05T08_47_48_702Z-eresolve-report.txt
+npm error A complete log of this run can be found in: C:\Users\Administrator\AppData\Local\npm-cache\_logs\2026-09-05T08_47_48_702Z-debug-0.log

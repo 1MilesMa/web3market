@@ -1,0 +1,45 @@
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+====================================================================
+市场 owner 移交时间锁 —— Sepolia 实战（可重入）
+====================================================================
+  市场   : 0x71450D767f2b83722b88164316d7308DB20A39c8
+  多签   : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+  时间锁 : 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+  公示期 : 300 秒
+  账号 1 : 0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8
+  账号 2 : 0xb9a429a3b101015DdeE57569360b73c36E646a32
+  账号 3 : 0x38e1969A889bF4912919D4b93cdF3c06dC6cd72a
+
+当前 owner : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+
+[第 1 步] 多签提名时间锁接任 owner
+  [复用] pendingOwner 已经是时间锁，跳过提名。
+  pendingOwner = 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+  owner        = 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317 （仍是多签 —— 交接期无权力真空）
+
+[第 2 步] 多签排队「时间锁接受 owner」
+  操作 id : 0x933fe65483696e547bab9e73d0cc2a2a8f75f0ee022bd7cf86d066079244469c
+  当前状态: Unset
+
+  多签提案 #5：schedule(acceptOwnership)
+  ✓ 账号 1 提交（提交即投第一票）
+    https://sepolia.etherscan.io/tx/0x280d56e95285888655609e2bb16be1023b40c0f822451310c5951b723572616c   (区块 11638804, gas 293435)
+    票数 1/2
+  ✓ 账号 2 补第二票
+    https://sepolia.etherscan.io/tx/0xdc190d853575a43c7150ac9770909e1d1b6bbf25c45d317094ceb8e1765f4265   (区块 11638805, gas 58155)
+    票数 2/2
+  ✓ 账号 1 触发执行
+    https://sepolia.etherscan.io/tx/0xeadf1361b682ca3dc42dffb647cd41b6874e7b14be57c7b5035be91e7939eb2a   (区块 11638807, gas 115513)
+    票数 2/2，已执行 true
+
+[第 3 步] 等待公示结束
+  操作状态: Waiting
+  距离可执行还剩 300 秒（约 5.0 分钟）
+  预定可执行时间：2026/9/5 15:10:36
+
+  ⏳ 还在公示期，现在执行会被拒绝。
+  等时间到了，再跑一次本脚本即可完成易主：
+     npx hardhat run scripts/transfer-market-to-timelock.js --network sepolia
+
+https://sepolia.etherscan.io/address/0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119
+

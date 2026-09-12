@@ -1,0 +1,201 @@
+'npx hardhat clean' running (wd: C:\Users\Administrator\Desktop\web3-contract-project)
+'npx hardhat clean --global' running (wd: C:\Users\Administrator\Desktop\web3-contract-project)
+'npx hardhat compile --force' running (wd: C:\Users\Administrator\Desktop\web3-contract-project)
+INFO:Detectors:
+Detector: arbitrary-send-eth
+SimpleMarket._settleSale(address,uint256,address,address,uint256) (contracts/SimpleMarket.sol#871-903) sends eth to arbitrary user
+	Dangerous calls:
+	- (ok,None) = address(seller).call{value: sellerProceeds}() (contracts/SimpleMarket.sol#899)
+MaliciousBuyer.attack(address,address,uint256,uint256) (contracts/mocks/MaliciousActors.sol#46-52) sends eth to arbitrary user
+	Dangerous calls:
+	- market.buy{value: price_}(nftAddr,tokenId_) (contracts/mocks/MaliciousActors.sol#51)
+MaliciousBuyer.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#61-75) sends eth to arbitrary user
+	Dangerous calls:
+	- market.buy{value: price}(nft,tokenId) (contracts/mocks/MaliciousActors.sol#69-73)
+FulfillListingProbe.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#720-745) sends eth to arbitrary user
+	Dangerous calls:
+	- (ok,data) = address(market).call{value: address(this).balance}(callData) (contracts/mocks/MaliciousActors.sol#734-736)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#functions-that-send-ether-to-arbitrary-destinations
+INFO:Detectors:
+Detector: locked-ether
+Contract locking ether found:
+	Contract RejectingSeller (contracts/mocks/MaliciousActors.sol#92-122) has payable functions:
+	 - RejectingSeller.receive() (contracts/mocks/MaliciousActors.sol#117-121)
+	But does not have a function to withdraw the ether
+Contract locking ether found:
+	Contract EthRejectingReceiver (contracts/mocks/MaliciousActors.sol#213-227) has payable functions:
+	 - EthRejectingReceiver.receive() (contracts/mocks/MaliciousActors.sol#218-221)
+	 - EthRejectingReceiver.fallback() (contracts/mocks/MaliciousActors.sol#224-226)
+	But does not have a function to withdraw the ether
+Contract locking ether found:
+	Contract ReenteringFeeReceiver (contracts/mocks/MaliciousActors.sol#303-328) has payable functions:
+	 - ReenteringFeeReceiver.receive() (contracts/mocks/MaliciousActors.sol#318-327)
+	But does not have a function to withdraw the ether
+Contract locking ether found:
+	Contract ReenteringOwner (contracts/mocks/MaliciousActors.sol#343-379) has payable functions:
+	 - ReenteringOwner.receive() (contracts/mocks/MaliciousActors.sol#369-378)
+	But does not have a function to withdraw the ether
+Contract locking ether found:
+	Contract RoyaltyRejectingReceiver (contracts/mocks/MaliciousActors.sol#424-442) has payable functions:
+	 - RoyaltyRejectingReceiver.receive() (contracts/mocks/MaliciousActors.sol#434-437)
+	 - RoyaltyRejectingReceiver.fallback() (contracts/mocks/MaliciousActors.sol#439-441)
+	But does not have a function to withdraw the ether
+Contract locking ether found:
+	Contract ReenteringRoyaltyReceiver (contracts/mocks/MaliciousActors.sol#456-490) has payable functions:
+	 - ReenteringRoyaltyReceiver.receive() (contracts/mocks/MaliciousActors.sol#479-489)
+	But does not have a function to withdraw the ether
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#contracts-that-lock-ether
+INFO:Detectors:
+Detector: missing-zero-check
+MaliciousBuyer.attack(address,address,uint256,uint256).nftAddr (contracts/mocks/MaliciousActors.sol#46) lacks a zero-check on :
+		- nft = nftAddr (contracts/mocks/MaliciousActors.sol#48)
+RefundRejectingBuyer.attack(address,address,uint256).nftAddr (contracts/mocks/MaliciousActors.sol#169) lacks a zero-check on :
+		- nft = nftAddr (contracts/mocks/MaliciousActors.sol#171)
+ReentrancyProbe.attack(address,address,uint256).nftAddr (contracts/mocks/MaliciousActors.sol#277) lacks a zero-check on :
+		- nft = nftAddr (contracts/mocks/MaliciousActors.sol#279)
+RejectingOfferBidder.makeOffer(address,address,uint256).nftAddr (contracts/mocks/MaliciousActors.sol#531) lacks a zero-check on :
+		- nft = nftAddr (contracts/mocks/MaliciousActors.sol#533)
+ReenteringOfferBidder.makeOffer(address,address,uint256).nftAddr (contracts/mocks/MaliciousActors.sol#623) lacks a zero-check on :
+		- nft = nftAddr (contracts/mocks/MaliciousActors.sol#625)
+FulfillListingProbe.attack(address,SimpleMarket.ListingIntent,address,bytes).seller_ (contracts/mocks/MaliciousActors.sol#710) lacks a zero-check on :
+		- seller = seller_ (contracts/mocks/MaliciousActors.sol#715)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+INFO:Detectors:
+Detector: reentrancy-benign
+Reentrancy in RejectingOfferBidder._probe(bytes,bool) (contracts/mocks/MaliciousActors.sol#558-573):
+	External calls:
+	- (ok,data) = address(market).call(callData) (contracts/mocks/MaliciousActors.sol#559)
+	State variables written after the call(s):
+	- pendingReentryRevertData = data (contracts/mocks/MaliciousActors.sol#564)
+	- pendingReentrySucceeded = true (contracts/mocks/MaliciousActors.sol#562)
+	- withdrawReentryRevertData = data (contracts/mocks/MaliciousActors.sol#570)
+	- withdrawReentrySucceeded = true (contracts/mocks/MaliciousActors.sol#568)
+Reentrancy in MaliciousBuyer.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#61-75):
+	External calls:
+	- market.buy{value: price}(nft,tokenId) (contracts/mocks/MaliciousActors.sol#69-73)
+	State variables written after the call(s):
+	- reentrySucceeded = true (contracts/mocks/MaliciousActors.sol#70)
+Reentrancy in ReentrancyProbe.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#258-274):
+	External calls:
+	- (ok,data) = address(market).call{value: price}(abi.encodeWithSignature(buy(address,uint256),nft,tokenId)) (contracts/mocks/MaliciousActors.sol#265-267)
+	State variables written after the call(s):
+	- reentryRevertData = data (contracts/mocks/MaliciousActors.sol#271)
+	- reentrySucceeded = true (contracts/mocks/MaliciousActors.sol#269)
+Reentrancy in ReenteringOfferBidder.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#631-665):
+	External calls:
+	- (ok,data) = address(market).call(abi.encodeWithSignature(acceptOffer(address,uint256,address),nft,tokenId,address(this))) (contracts/mocks/MaliciousActors.sol#635-642)
+	State variables written after the call(s):
+	- reentryRevertData = data (contracts/mocks/MaliciousActors.sol#646)
+	- reentrySucceeded = true (contracts/mocks/MaliciousActors.sol#644)
+Reentrancy in ReenteringOfferBidder.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#631-665):
+	External calls:
+	- (ok,data) = address(market).call(abi.encodeWithSignature(acceptOffer(address,uint256,address),nft,tokenId,address(this))) (contracts/mocks/MaliciousActors.sol#635-642)
+	- (rejectOk,rejectData) = address(market).call(abi.encodeWithSignature(rejectOffer(address,uint256,address),nft,tokenId,address(this))) (contracts/mocks/MaliciousActors.sol#651-658)
+	State variables written after the call(s):
+	- rejectReentryRevertData = rejectData (contracts/mocks/MaliciousActors.sol#662)
+	- rejectReentrySucceeded = true (contracts/mocks/MaliciousActors.sol#660)
+Reentrancy in FulfillListingProbe.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#720-745):
+	External calls:
+	- (ok,data) = address(market).call{value: address(this).balance}(callData) (contracts/mocks/MaliciousActors.sol#734-736)
+	State variables written after the call(s):
+	- reentryRevertData = data (contracts/mocks/MaliciousActors.sol#740)
+	- reentrySucceeded = true (contracts/mocks/MaliciousActors.sol#738)
+Reentrancy in ReenteringFeeReceiver.receive() (contracts/mocks/MaliciousActors.sol#318-327):
+	External calls:
+	- (ok,data) = address(market).call(abi.encodeWithSignature(withdrawFees(address),address(this))) (contracts/mocks/MaliciousActors.sol#319-321)
+	State variables written after the call(s):
+	- reentryRevertData = data (contracts/mocks/MaliciousActors.sol#325)
+	- reentrySucceeded = true (contracts/mocks/MaliciousActors.sol#323)
+Reentrancy in ReenteringOwner.receive() (contracts/mocks/MaliciousActors.sol#369-378):
+	External calls:
+	- (ok,data) = address(market).call(abi.encodeWithSignature(withdrawFees(address),address(this))) (contracts/mocks/MaliciousActors.sol#370-372)
+	State variables written after the call(s):
+	- reentryRevertData = data (contracts/mocks/MaliciousActors.sol#376)
+	- reentrySucceeded = true (contracts/mocks/MaliciousActors.sol#374)
+Reentrancy in ReenteringRoyaltyReceiver.receive() (contracts/mocks/MaliciousActors.sol#479-489):
+	External calls:
+	- (ok,data) = address(market).call(abi.encodeWithSignature(withdrawRoyalties())) (contracts/mocks/MaliciousActors.sol#481-483)
+	State variables written after the call(s):
+	- reentryRevertData = data (contracts/mocks/MaliciousActors.sol#487)
+	- reentrySucceeded = true (contracts/mocks/MaliciousActors.sol#485)
+Reentrancy in RejectingOfferBidder.receive() (contracts/mocks/MaliciousActors.sol#576-587):
+	External calls:
+	- _probe(abi.encodeWithSignature(withdrawOffer(address,uint256),nft,tokenId),false) (contracts/mocks/MaliciousActors.sol#581-584)
+		- (ok,data) = address(market).call(callData) (contracts/mocks/MaliciousActors.sol#559)
+	- _probe(abi.encodeWithSignature(withdrawPendingFunds()),true) (contracts/mocks/MaliciousActors.sol#585)
+		- (ok,data) = address(market).call(callData) (contracts/mocks/MaliciousActors.sol#559)
+	State variables written after the call(s):
+	- _probe(abi.encodeWithSignature(withdrawPendingFunds()),true) (contracts/mocks/MaliciousActors.sol#585)
+		- pendingReentryRevertData = data (contracts/mocks/MaliciousActors.sol#564)
+	- _probe(abi.encodeWithSignature(withdrawPendingFunds()),true) (contracts/mocks/MaliciousActors.sol#585)
+		- pendingReentrySucceeded = true (contracts/mocks/MaliciousActors.sol#562)
+	- _probe(abi.encodeWithSignature(withdrawPendingFunds()),true) (contracts/mocks/MaliciousActors.sol#585)
+		- withdrawReentryRevertData = data (contracts/mocks/MaliciousActors.sol#570)
+	- _probe(abi.encodeWithSignature(withdrawPendingFunds()),true) (contracts/mocks/MaliciousActors.sol#585)
+		- withdrawReentrySucceeded = true (contracts/mocks/MaliciousActors.sol#568)
+Reentrancy in SimpleMarket.rejectOffer(address,uint256,address) (contracts/SimpleMarket.sol#754-780):
+	External calls:
+	- (ok,None) = address(bidder).call{value: amount}() (contracts/SimpleMarket.sol#772)
+	State variables written after the call(s):
+	- pendingWithdrawals[bidder] += amount (contracts/SimpleMarket.sol#775)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+INFO:Detectors:
+Detector: timestamp
+HelloWeb3.getEntry(uint256) (contracts/HelloWeb3.sol#58-66) uses timestamp for comparisons
+	Dangerous comparisons:
+	- require(bool,string)(index < _history.length,index out of range) (contracts/HelloWeb3.sol#63)
+SimpleMarket.fulfillListing(SimpleMarket.ListingIntent,address,bytes) (contracts/SimpleMarket.sol#573-625) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > intent.deadline (contracts/SimpleMarket.sol#580)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+Detector: dead-code
+MyNFT._increaseBalance(address,uint128) (contracts/MyNFT.sol#548-553) is never used and should be removed
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#dead-code
+INFO:Detectors:
+Detector: low-level-calls
+Low level call in MultiSigOwner.execute(uint256) (contracts/MultiSigOwner.sol#343-365):
+	- (success,returnData) = transaction.to.call{value: transaction.value}(transaction.data) (contracts/MultiSigOwner.sol#361)
+Low level call in SimpleMarket.buy(address,uint256) (contracts/SimpleMarket.sol#514-548):
+	- (refundOk,None) = address(msg.sender).call{value: excess}() (contracts/SimpleMarket.sol#545)
+Low level call in SimpleMarket.fulfillListing(SimpleMarket.ListingIntent,address,bytes) (contracts/SimpleMarket.sol#573-625):
+	- (refundOk,None) = address(msg.sender).call{value: excess}() (contracts/SimpleMarket.sol#622)
+Low level call in SimpleMarket.withdrawOffer(address,uint256) (contracts/SimpleMarket.sol#716-734):
+	- (ok,None) = address(msg.sender).call{value: amount}() (contracts/SimpleMarket.sol#730)
+Low level call in SimpleMarket.rejectOffer(address,uint256,address) (contracts/SimpleMarket.sol#754-780):
+	- (ok,None) = address(bidder).call{value: amount}() (contracts/SimpleMarket.sol#772)
+Low level call in SimpleMarket.withdrawPendingFunds() (contracts/SimpleMarket.sol#839-849):
+	- (ok,None) = address(msg.sender).call{value: amount}() (contracts/SimpleMarket.sol#845)
+Low level call in SimpleMarket._settleSale(address,uint256,address,address,uint256) (contracts/SimpleMarket.sol#871-903):
+	- (ok,None) = address(seller).call{value: sellerProceeds}() (contracts/SimpleMarket.sol#899)
+Low level call in SimpleMarket.withdrawRoyalties() (contracts/SimpleMarket.sol#1015-1025):
+	- (ok,None) = address(msg.sender).call{value: amount}() (contracts/SimpleMarket.sol#1021)
+Low level call in SimpleMarket.withdrawFees(address) (contracts/SimpleMarket.sol#1062-1073):
+	- (ok,None) = address(to).call{value: amount}() (contracts/SimpleMarket.sol#1069)
+Low level call in ReentrancyProbe.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#258-274):
+	- (ok,data) = address(market).call{value: price}(abi.encodeWithSignature(buy(address,uint256),nft,tokenId)) (contracts/mocks/MaliciousActors.sol#265-267)
+Low level call in ReenteringFeeReceiver.receive() (contracts/mocks/MaliciousActors.sol#318-327):
+	- (ok,data) = address(market).call(abi.encodeWithSignature(withdrawFees(address),address(this))) (contracts/mocks/MaliciousActors.sol#319-321)
+Low level call in ReenteringOwner.receive() (contracts/mocks/MaliciousActors.sol#369-378):
+	- (ok,data) = address(market).call(abi.encodeWithSignature(withdrawFees(address),address(this))) (contracts/mocks/MaliciousActors.sol#370-372)
+Low level call in ReenteringRoyaltyReceiver.receive() (contracts/mocks/MaliciousActors.sol#479-489):
+	- (ok,data) = address(market).call(abi.encodeWithSignature(withdrawRoyalties())) (contracts/mocks/MaliciousActors.sol#481-483)
+Low level call in RejectingOfferBidder._probe(bytes,bool) (contracts/mocks/MaliciousActors.sol#558-573):
+	- (ok,data) = address(market).call(callData) (contracts/mocks/MaliciousActors.sol#559)
+Low level call in ReenteringOfferBidder.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#631-665):
+	- (ok,data) = address(market).call(abi.encodeWithSignature(acceptOffer(address,uint256,address),nft,tokenId,address(this))) (contracts/mocks/MaliciousActors.sol#635-642)
+	- (rejectOk,rejectData) = address(market).call(abi.encodeWithSignature(rejectOffer(address,uint256,address),nft,tokenId,address(this))) (contracts/mocks/MaliciousActors.sol#651-658)
+Low level call in FulfillListingProbe.onERC721Received(address,address,uint256,bytes) (contracts/mocks/MaliciousActors.sol#720-745):
+	- (ok,data) = address(market).call{value: address(this).balance}(callData) (contracts/mocks/MaliciousActors.sol#734-736)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Detectors:
+Detector: immutable-states
+FulfillListingProbe.reenter (contracts/mocks/MaliciousActors.sol#691) should be immutable 
+FulfillListingProbe.rejectEth (contracts/mocks/MaliciousActors.sol#690) should be immutable 
+HelloWeb3.owner (contracts/HelloWeb3.sol#19) should be immutable 
+ReenteringFeeReceiver.market (contracts/mocks/MaliciousActors.sol#305) should be immutable 
+ReenteringOwner.market (contracts/mocks/MaliciousActors.sol#345) should be immutable 
+ReenteringRoyaltyReceiver.market (contracts/mocks/MaliciousActors.sol#458) should be immutable 
+RejectingSeller.rejectEth (contracts/mocks/MaliciousActors.sol#94) should be immutable 
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-immutable
+INFO:Slither:. analyzed (58 contracts with 102 detectors), 53 result(s) found

@@ -1,0 +1,34 @@
+◇ injected env (0) from .env // tip: ⌁ auth for agents [www.vestauth.com]
+多签治理实战验证（收尾）—— Sepolia
+==================================================================
+  市场 : 0x71450D767f2b83722b88164316d7308DB20A39c8
+  多签 : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+  市场 owner : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317 （多签已接管 ✓）
+  当前费率   : 300 bps
+
+第 2 关：只凑 1 票就执行，必须被挡下
+  复用现有 1 票提案 #2（票数 1/2，目标：改费率 999）
+  [被拒] execution reverted
+  结论：1 票不足以动用 owner 权力，单人无法擅自改费率 ✓
+
+第 3 关：走完整流程把费率改回 250 bps
+
+  ── 提案 #3：setFeeBps(250)
+  ✓ 账号 1 提交（自动投第一票）
+    https://sepolia.etherscan.io/tx/0xdc431bdfdbad8a3fafbf0411258c89dd0b47fc3263de5a5c209b17f8738e0497  (区块 11638121, gas 174446)
+  ✓ 账号 2 补第二票
+    https://sepolia.etherscan.io/tx/0xb45bebba748be3c30635c280f35d01c06310eeb1c689bb0233514e51b1a67983  (区块 11638122, gas 58155)
+  ✓ 账号 1 执行
+    https://sepolia.etherscan.io/tx/0xa366cab4a34a2cafb17377b29ef261da5ea950c8bf615629f4f2618182a3e112  (区块 11638123, gas 75740)
+    结果：票数 2/2，已执行 true
+  链上费率 : 250 bps → 已还原 ✓
+
+最终状态
+  市场 owner   : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+  市场费率     : 250n bps
+  多签阈值     : 2n
+  多签提案总数 : 4n
+
+https://sepolia.etherscan.io/address/0x71450D767f2b83722b88164316d7308DB20A39c8
+https://sepolia.etherscan.io/address/0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+

@@ -1,0 +1,9 @@
+Compiled 35 Solidity files successfully (evm target: cancun).
+
+Warning: Function state mutability can be restricted to pure
+   --> contracts/mocks/MaliciousActors.sol:107:5:
+    |
+107 |     function onERC721Received(
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+

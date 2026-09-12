@@ -521,7 +521,7 @@ slither contracts/SimpleMarket.sol --solc /usr/local/bin/solc \
   --solc-remaps '@openzeppelin/=/root/web3-audit/@openzeppelin/'
 ```
 
-完整报告：`D:\WSL\slither-report.txt`（1201 行，五个合约全量输出）。
+完整报告：`logs/slither-report.txt`（1201 行，五个合约全量输出）。
 
 ### 三、结果总览
 
@@ -598,7 +598,7 @@ slither contracts/SimpleMarket.sol --solc /usr/local/bin/solc \
 
 - `npx hardhat compile`：生产合约**零警告**（唯一一条 `pure` 提示仍在测试用 `mocks/MaliciousActors.sol:107`）
 - `npx hardhat test`：**225 passing，零回归**
-- Slither 复检：`D:\WSL\slither-report-v3.txt`（改用 `slither contracts` 口径，只扫生产 4 个文件，27 个 detector 结果块）
+- Slither 复检：`logs/slither-report-v3.txt`（改用 `slither contracts` 口径，只扫生产 4 个文件，27 个 detector 结果块）
 
 仍保留的 2 条 INFO（`reentrancy-benign` / `reentrancy-events`）来自 OZ v5 的 `_setTokenURI`：它内部要求 token 已存在（`_requireMinted`），因此只能在 `_safeMint` 之后调用，顺序无法再调，属于**依赖库约束**而非本项目缺陷。
 

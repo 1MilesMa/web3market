@@ -1,0 +1,21 @@
+◇ injected env (0) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+多签治理实战验证 —— Sepolia
+==================================================================
+  市场 : 0x71450D767f2b83722b88164316d7308DB20A39c8
+  多签 : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317
+  市场 owner : 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317 （多签已接管 ✓）
+  当前费率   : 250 bps
+
+第 1 关：多签两人同意，把费率改成 300 bps
+
+  ── 提案 #1：setFeeBps(300)
+  ✓ 账号 1 提交（自动投第一票）
+    https://sepolia.etherscan.io/tx/0xb1857d5251f097c273ee6ada0887597d2dcfc776cebfb8f642732c7f989bf39d  (区块 11638109, gas 174458)
+  ✓ 账号 2 补第二票
+    https://sepolia.etherscan.io/tx/0x0accc10b87d47663497f89711130d13d2728a8b36f8169d677a304cb000ac1ff  (区块 11638110, gas 58155)
+  ✓ 执行
+    https://sepolia.etherscan.io/tx/0xd6dbe4ae6b48411e3bd4c285c30b0a04adbac5025f3fe6b4273129ba4818dc64  (区块 11638112, gas 75740)
+    结果：票数 2/2，已执行 true
+  链上费率 : 300 bps → 生效 ✓
+
+第 2 关：只凑 1 票就执行，必须被挡下

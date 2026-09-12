@@ -1,0 +1,30 @@
+=== Sourcify 源码验证 ===
+网络: sepolia | chainId: 11155111
+API 端点: https://sourcify.dev/server
+
+--- MyNFT (0x9EFe00123a6A22d903D63E195B7E87Bf3622412e) ---
+  结果: 失败
+  原因: A network request failed. This is an error from the block explorer, not Hardhat. Error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+
+--- SimpleMarket (0x71450D767f2b83722b88164316d7308DB20A39c8) ---
+  结果: 失败
+  原因: A network request failed. This is an error from the block explorer, not Hardhat. Error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+
+--- MultiSigOwner (0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317) ---
+  结果: 失败
+  原因: A network request failed. This is an error from the block explorer, not Hardhat. Error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+
+--- MarketTimelock (0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119) ---
+  结果: 失败
+  原因: A network request failed. This is an error from the block explorer, not Hardhat. Error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+
+=== 汇总 ===
+  [未验证] MyNFT
+  [未验证] SimpleMarket
+  [未验证] MultiSigOwner
+  [未验证] MarketTimelock
+
+查看地址（把地址替换进去即可）：
+  https://sourcify.dev/#/lookup/<合约地址>
+
+未通过的合约： MyNFT、SimpleMarket、MultiSigOwner、MarketTimelock
