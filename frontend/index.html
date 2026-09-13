@@ -128,6 +128,7 @@
 
   <section class="card">
     <h2>我的 NFT <span class="tag">ERC721Enumerable</span></h2>
+    <div class="row"><label>当前 NFT 合约</label><input id="curNft" placeholder="0x…（下面四个区块会自动同步这个地址）" /></div>
     <div class="row">
       <button class="small ghost" id="btnRefreshNft">刷新</button>
       <button class="small" id="btnApprove">授权市场</button>
@@ -213,7 +214,7 @@
     <p class="hint">出价按出价人分桶，同一枚 NFT 可多人同时出价；重复出价是累加（加价）。</p>
     <div class="row"><label>NFT 合约</label><input id="offNft" /></div>
     <div class="row"><label>TokenId</label><input id="offToken" /></div>
-    <div class="row"><label>出价(ETH)</label><input id="offAmount" placeholder="0.001" /></div>
+    <div class="row"><label>出价(ETH)</label><input id="offAmount" value="0.001" placeholder="0.001" /></div>
     <div class="row"><label>出价人</label><input id="offBidder" placeholder="默认自己" /></div>
     <div class="row">
       <button id="btnOffer">出价</button>

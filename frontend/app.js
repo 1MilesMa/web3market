@@ -28,8 +28,17 @@
     var box = $("log");
     var el = document.createElement("div");
     el.className = "lg " + (kind || "i");
-    el.innerHTML = '<span class="t">' + ts() + "</span>" +
-      String(msg).replace(/</g, "&lt;");
+    var tspan = document.createElement("span");
+    tspan.className = "t";
+    tspan.textContent = ts();
+    el.appendChild(tspan);
+    String(msg).split(/(<a\b[^>]*>[\s\S]*?<\/a>)/g).forEach(function (part) {
+      if (/^<a\b/.test(part)) {
+        el.insertAdjacentHTML("beforeend", part.replace(/javascript:/gi, ""));
+      } else if (part) {
+        el.appendChild(document.createTextNode(part));
+      }
+    });
     box.appendChild(el);
     box.scrollTop = box.scrollHeight;
   }
@@ -39,6 +48,17 @@
   function need(cond, msg) {
     if (!cond) { log(msg, "e"); return false; }
     return true;
+  }
+
+  // 当前 NFT 合约：页面「当前 NFT 合约」输入框是唯一入口，其余区块自动同步
+  function nftAddress() {
+    var v = (($("curNft") && $("curNft").value) || "").trim();
+    return v || CFG.contracts.MyNFT.address;
+  }
+  var ADDR_IDS = ["lstNft", "buyNft", "offNft", "actNft"];
+  function syncAddrInputs() {
+    var a = nftAddress();
+    ADDR_IDS.forEach(function (id) { if ($(id)) $(id).value = a; });
   }
 
   // 把链上 revert 原因翻成人话
@@ -125,8 +145,12 @@
       $("netPill").textContent = CFG.chainName;
       $("acctPill").textContent = short(account);
       $("btnConnect").textContent = short(account);
-      var addr = CFG.contracts.MyNFT.address;
-      ["lstNft", "buyNft", "offNft", "actNft"].forEach(function (id) { $(id).value = addr; });
+      try {
+        var savedNft = localStorage.getItem("simplemarket.nft");
+        if (savedNft && !$("curNft").value) $("curNft").value = savedNft;
+      } catch (_) {}
+      if (!$("curNft").value) $("curNft").value = CFG.contracts.MyNFT.address;
+      syncAddrInputs();
       log("已连接 " + account, "s");
       await refreshAll();
     } catch (e) {
@@ -151,9 +175,10 @@
   }
 
   function bindContracts() {
-    nft = new E.Contract(CFG.contracts.MyNFT.address, abiNft, provider);
+    var naddr = nftAddress();
+    nft = new E.Contract(naddr, abiNft, provider);
     market = new E.Contract(CFG.contracts.SimpleMarket.address, abiMkt, provider);
-    nftW = new E.Contract(CFG.contracts.MyNFT.address, abiNft, signer);
+    nftW = new E.Contract(naddr, abiNft, signer);
     marketW = new E.Contract(CFG.contracts.SimpleMarket.address, abiMkt, signer);
   }
 
@@ -319,7 +344,7 @@
       var top = Number(await nft.nextTokenId());
       var rows = [];
       for (var i = 0; i < top; i++) {
-        var r = await market.getListing(CFG.contracts.MyNFT.address, i);
+        var r = await market.getListing(nftAddress(), i);
         if (r[2]) rows.push({ tokenId: String(i), seller: r[0], price: r[1] });
       }
       renderMarket(rows, top);
@@ -410,7 +435,7 @@
       var nonce = await market.listingNonces(account);
       var deadline = Math.floor(Date.now() / 1000) + Number($("sigMins").value || 60) * 60;
       var intent = {
-        nftContract: CFG.contracts.MyNFT.address,
+        nftContract: nftAddress(),
         tokenId: $("sigToken").value,
         price: price.toString(),
         deadline: deadline,
@@ -534,6 +559,16 @@
 
   function bind() {
     $("btnConnect").onclick = connect;
+
+    if ($("curNft")) {
+      $("curNft").addEventListener("change", function () {
+        var v = $("curNft").value.trim();
+        try { localStorage.setItem("simplemarket.nft", v); } catch (_) {}
+        syncAddrInputs();
+        if (provider) { bindContracts(); refreshAll(); }
+        log("当前 NFT 合约已切换为 " + nftAddress(), "s");
+      });
+    }
 
     $("btnRefreshNft").onclick = refreshNfts;
     $("btnApprove").onclick = doApprove;
