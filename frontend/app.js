@@ -98,18 +98,25 @@
     return raw;
   }
 
-  // 统一发交易：等待上链并记日志
+  // 统一发交易：先模拟、再真正提交，并把"有没有花 gas"讲清楚
   async function send(fn, label, refreshAfter) {
+    var tx;
     try {
-      log("提交：" + label + "（等待钱包确认…）");
-      var tx = await fn();
-      log("已上链，哈希 " + link("tx", tx.hash), "s");
+      // 这一步只是向节点"试算"一遍，被 revert 会在这里就抛错，不会上链、不花 gas
+      log("模拟执行中（不上链、不花 gas）…");
+      tx = await fn();
+    } catch (e) {
+      log(label + " 未发出（模拟阶段就被拒绝，没上链、没花 gas）：" + explain(e), "e");
+      return null;
+    }
+    log("已提交，哈希 " + link("tx", tx.hash) + "（等待区块确认…）", "s");
+    try {
       var rc = await tx.wait();
       log(label + " 成功 | 区块 " + rc.blockNumber + " | gas " + rc.gasUsed.toString(), "s");
       if (refreshAfter) await refreshAfter();
       return rc;
     } catch (e) {
-      log(label + " 失败：" + explain(e), "e");
+      log(label + " 上链后失败（gas 已扣）：" + explain(e), "e");
       return null;
     }
   }
@@ -149,7 +156,11 @@
         var savedNft = localStorage.getItem("simplemarket.nft");
         if (savedNft && !$("curNft").value) $("curNft").value = savedNft;
       } catch (_) {}
-      if (!$("curNft").value) $("curNft").value = CFG.contracts.MyNFT.address;
+      if (!$("curNft").value) {
+        $("curNft").value = CFG.contracts.MyNFT.address;
+        log("「当前 NFT 合约」是空的，已回落到默认地址 " + CFG.contracts.MyNFT.address +
+            "。如果你要操作的是另一份合约，请在上面改掉再刷新。", "w");
+      }
       syncAddrInputs();
       log("已连接 " + account, "s");
       await refreshAll();
@@ -533,7 +544,11 @@
     if (uri === null) return;
     try {
       var enabled = await nft.publicMintEnabled();
-      if (!enabled) log("公开铸造当前是关闭状态，需要 owner 先打开 setPublicMintEnabled(true)", "w");
+      if (!enabled) {
+        log("公开铸造是关闭状态：合约 " + nftAddress() +
+            " 的 publicMintEnabled=false。需要该合约 owner 先打开，本次不提交交易。", "w");
+        return;
+      }
     } catch (_) {}
     await send(function () { return nftW.publicMint(uri || "ipfs://demo"); }, "公开铸造一枚 NFT", refreshAll);
   }
@@ -561,9 +576,21 @@
     $("btnConnect").onclick = connect;
 
     if ($("curNft")) {
+      function rememberNft(v) {
+        if (!v) return; // 空值不覆盖已记住的地址，避免下次连接静默回落
+        try { localStorage.setItem("simplemarket.nft", v); } catch (_) {}
+      }
+      $("curNft").addEventListener("input", function () {
+        rememberNft($("curNft").value.trim());
+      });
       $("curNft").addEventListener("change", function () {
         var v = $("curNft").value.trim();
-        try { localStorage.setItem("simplemarket.nft", v); } catch (_) {}
+        if (!v) {
+          $("curNft").value = nftAddress();
+          log("「当前 NFT 合约」不能留空，已恢复为 " + $("curNft").value, "w");
+          return;
+        }
+        rememberNft(v);
         syncAddrInputs();
         if (provider) { bindContracts(); refreshAll(); }
         log("当前 NFT 合约已切换为 " + nftAddress(), "s");
@@ -601,11 +628,16 @@
     $("btnWithdrawFees").onclick = doWithdrawFees;
 
     if (window.ethereum && window.ethereum.on) {
-      window.ethereum.on("accountsChanged", function (accs) {
+      window.ethereum.on("accountsChanged", async function (accs) {
         if (!accs.length) { location.reload(); return; }
         account = accs[0];
+        // 关键：钱包里换了账户后必须重建 provider / signer。
+        // 旧 signer 会缓存之前的地址，导致页面显示新账户、签名却仍用旧账户。
+        provider = new E.BrowserProvider(window.ethereum);
+        signer = await provider.getSigner();
         $("acctPill").textContent = short(account);
-        log("账户切换为 " + account, "w");
+        $("btnConnect").textContent = short(account);
+        log("已切换到账户 " + account + "（签名账户已重新绑定）", "w");
         bindContracts();
         refreshAll();
       });
