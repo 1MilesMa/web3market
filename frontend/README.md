@@ -49,6 +49,7 @@ node serve.js
 | 处置出价 | 持有者接受 / 拒绝某人的出价 |
 | 资金 | Pull Payment 的三笔钱：待领款、版税、平台费（仅 owner） |
 | 日志 | 每笔交易的哈希、区块、gas，失败时给出中文原因 |
+| 查交易 | 粘贴一笔交易哈希，直接用 RPC 节点查它的状态/区块/时间/手续费/from-to/金额/nonce。**不依赖区块浏览器** |
 
 ---
 
@@ -95,6 +96,7 @@ node serve.js
 | 成交失败：`SignatureExpired` | 超过 deadline，重新签一条、把有效期调长 |
 | 铸造失败：`PublicMintDisabled` | 公开铸造由 owner 开关，需要 owner 先调用 `setPublicMintEnabled(true)` |
 | 合约暂停时 | 开仓类（挂单/买入/出价/签名成交/铸造）会被挡下；撤单与提现不受影响，这是刻意设计 |
+| 点交易哈希跳浏览器提示「无法访问此页面」 | 本地网络打不开 `sepolia.etherscan.io` 与 `eth-sepolia.blockscout.com`（实测 8 秒无响应）。用「查交易」区块把哈希粘进去直查；或点哈希后面的 `[备]` 走备用浏览器 otterscan |
 
 ---
 
