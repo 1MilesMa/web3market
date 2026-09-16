@@ -609,7 +609,7 @@ slither contracts/SimpleMarket.sol --solc /usr/local/bin/solc \
 |---|---|
 | Slither（WSL） | 47 条全 INFO，零中高危 |
 | solc 0.8.28 编译警告 | 生产合约**零警告**（唯一一条 `pure` 提示在测试用恶意合约 `MaliciousActors.sol:107`） |
-| 单元测试 | 225 passing，含 15 个恶意合约攻击载体 |
+| 单元测试 | 225 passing（2026-09-03 那轮复检时的用例数），含 13 个恶意合约攻击载体 |
 | 覆盖率 | SimpleMarket 100 / 100 / 100 / 100 |
 | 链上实跑 | 出价 24 项 OK + EIP-712 四道防重放拦截，资金守恒通过 |
 | 不变量校验 | 余额 = 代管 + 待领池 + 平台费 + 版税，每次演练校验通过 |
