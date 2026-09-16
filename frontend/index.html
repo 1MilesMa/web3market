@@ -248,6 +248,17 @@
   </section>
 
   <section class="card full">
+    <h2>查交易 <span class="tag">页内直查 · 不依赖区块浏览器</span></h2>
+    <p class="hint">区块浏览器在本机网络经常打不开（Etherscan、Blockscout 都连不上），这里直接用 RPC 节点查同一笔交易，只要节点通就能看到结果。只读，不花 gas，不用先连钱包。</p>
+    <div class="row"><label>交易哈希</label><input id="txHash" placeholder="0x…（粘贴后点查询）" /></div>
+    <div class="row">
+      <button id="btnLookupTx">查询交易</button>
+      <button class="ghost small" id="btnUseLastTx">查最近一笔</button>
+    </div>
+    <div class="quote" id="txBox" style="white-space:pre-wrap">尚未查询</div>
+  </section>
+
+  <section class="card full">
     <h2>日志 <span class="tag">每笔交易哈希与状态</span></h2>
     <div id="log"></div>
   </section>

@@ -13,6 +13,7 @@
   var nft, market;              // 只读合约（连 provider）
   var nftW, marketW;            // 可写合约（连 signer）
   var abiNft, abiMkt;
+  var lastTxHash = "";           // 最近一笔提交的交易哈希（页内「查交易」用）
 
   // ---------------------------------------------------------------- 工具
 
@@ -43,7 +44,12 @@
     box.scrollTop = box.scrollHeight;
   }
   function link(kind, hash) {
-    return '<a href="' + CFG.explorer + "/" + kind + "/" + hash + '" target="_blank">' + hash + "</a>";
+    var out = '<a href="' + CFG.explorer + "/" + kind + "/" + hash + '" target="_blank">' + hash + "</a>";
+    // 本机网络打不开 Etherscan（踩坑日志 P-36），补一个备用区块浏览器入口
+    if (CFG.explorerAlt) {
+      out += ' <a href="' + CFG.explorerAlt + "/" + kind + "/" + hash + '" target="_blank">[备]</a>';
+    }
+    return out;
   }
   function need(cond, msg) {
     if (!cond) { log(msg, "e"); return false; }
@@ -110,6 +116,8 @@
       return null;
     }
     log("已提交，哈希 " + link("tx", tx.hash) + "（等待区块确认…）", "s");
+    lastTxHash = tx.hash;
+    if ($("txHash")) $("txHash").value = tx.hash;
     try {
       var rc = await tx.wait();
       log(label + " 成功 | 区块 " + rc.blockNumber + " | gas " + rc.gasUsed.toString(), "s");
@@ -339,6 +347,49 @@
       return marketW.buy($("buyNft").value, $("buyToken").value, { value: price });
     }, "买入 #" + $("buyToken").value + " @ " + $("buyPrice").value + " ETH", refreshAll);
   }
+  // ---------------------------------------------------------------- 查交易（页内直查，不依赖区块浏览器）
+
+  /* 为什么要有这个：本机网络打不开 sepolia.etherscan.io / blockscout（踩坑日志 P-36、R-15），
+   * 点哈希跳浏览器只会得到一句「无法访问此页面」。而 RPC 节点是通的，
+   * 所以交易详情直接用 RPC 读回页面显示。只读查询，不花 gas，也不需要先连钱包。 */
+
+  async function doLookupTx() {
+    var box = $("txBox");
+    var h = ($("txHash").value || "").trim();
+    if (!/^0x[0-9a-fA-F]{64}$/.test(h)) {
+      box.textContent = "哈希格式不对：应当是 0x 开头、共 66 个字符（0x + 64 位十六进制）";
+      return;
+    }
+    box.textContent = "查询中…（直接问 RPC 节点）";
+    try {
+      var p = provider || new E.JsonRpcProvider(CFG.rpcUrl);
+      var tx = await p.getTransaction(h);
+      if (!tx) {
+        box.textContent = "节点上没有这笔交易：可能哈希写错了，也可能它还没广播出去。";
+        return;
+      }
+      var rc = await p.getTransactionReceipt(h);
+      var rows = [];
+      rows.push("状态　：" + (!rc
+        ? "已广播，等待打包（还没有收据）"
+        : (rc.status === 1 ? "成功" : "失败（revert，gas 已扣）")));
+      if (rc) {
+        rows.push("区块　：" + rc.blockNumber + "（区块内第 " + rc.index + " 笔）");
+        var blk = await p.getBlock(rc.blockNumber);
+        if (blk) rows.push("时间　：" + new Date(Number(blk.timestamp) * 1000).toLocaleString());
+        rows.push("手续费：" + E.formatEther(rc.gasUsed * rc.gasPrice) + " ETH（gasUsed " + rc.gasUsed.toString() + "）");
+      }
+      rows.push("发起人：" + tx.from);
+      rows.push("对方　：" + (tx.to || "（无 to，合约创建）"));
+      rows.push("金额　：" + E.formatEther(tx.value) + " ETH");
+      rows.push("nonce ：" + tx.nonce);
+      box.textContent = rows.join("\n");
+    } catch (e) {
+      box.textContent = "查询失败：" + explain(e) +
+        "\n若是网络/连接类报错，那是 RPC 节点这会儿不通（不是这笔交易有问题），过一会儿再点一次。";
+    }
+  }
+
 
   // ---------------------------------------------------------------- 在售一览
 
@@ -610,6 +661,12 @@
     $("btnBuy").onclick = doBuy;
 
     $("btnRefreshMarket").onclick = refreshMarket;
+    $("btnLookupTx").onclick = doLookupTx;
+    $("btnUseLastTx").onclick = function () {
+      if (!lastTxHash) { log("还没有提交过交易，先做一笔再点这个", "w"); return; }
+      $("txHash").value = lastTxHash;
+      doLookupTx();
+    };
 
     $("btnSign").onclick = doSign;
     $("btnCopySig").onclick = doCopySig;

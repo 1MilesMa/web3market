@@ -5,6 +5,8 @@ window.APP_CONFIG = {
   "chainName": "Sepolia",
   "rpcUrl": "https://sepolia.gateway.tenderly.co",
   "explorer": "https://sepolia.etherscan.io",
+  // explorerAlt 是备用浏览器；本机网络打不开 etherscan（踩坑日志 P-36），页内「查交易」则完全不依赖浏览器
+  "explorerAlt": "https://sepolia.otterscan.io",
   "contracts": {
     "MyNFT": {
       "address": "0x9EFe00123a6A22d903D63E195B7E87Bf3622412e",

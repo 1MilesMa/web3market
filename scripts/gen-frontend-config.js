@@ -33,6 +33,7 @@ const cfg = {
   chainName: "Sepolia",
   rpcUrl: "https://ethereum-sepolia-rpc.publicnode.com",
   explorer: "https://sepolia.etherscan.io",
+  explorerAlt: "https://sepolia.otterscan.io",
   contracts: {
     MyNFT: {
       address: nft.address,
