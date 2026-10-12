@@ -20,3 +20,7 @@ artifacts/
 coverage/
 coverage.json
 gasReporterOutput.json
+# 历史备份文件与压缩包（备份已归档至仓库外，不入库）
+*.bak
+*.bak-*
+*.zip
