@@ -514,7 +514,7 @@ web3-contract-project/
 └─ metadata/                 NFT metadata 示例
 ```
 
-历史 `.bak` 备份已于 2026-10-12 归档至仓库外并从版本库移除，不再入库。
+历史版本备份文件（`*.bak`）已移出仓库，不随仓库发布。
 
 ---
 
@@ -616,7 +616,7 @@ slither contracts/SimpleMarket.sol --solc /usr/local/bin/solc \
 
 ### 六、可选加固已落地（2026-09-03 复检）
 
-四条全部改完（当时的改动备份 `*.bak-slither-hardening` 已于 2026-10-12 归档并移出版本库）：
+四条全部改完，改动前后都留了备份（备份文件为本地快照，不随仓库发布）：
 
 | 加固项 | 实际改动 | 复检结果 |
 |---|---|---|

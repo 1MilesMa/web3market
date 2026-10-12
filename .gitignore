@@ -20,7 +20,7 @@ artifacts/
 coverage/
 coverage.json
 gasReporterOutput.json
-# 历史备份文件与压缩包（备份已归档至仓库外，不入库）
+# 历史备份与打包产物（*.bak 曾误入库，2026-10-12 收尾清理，防复发）
 *.bak
 *.bak-*
 *.zip
