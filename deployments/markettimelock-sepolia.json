@@ -1,19 +1,19 @@
 {
   "contract": "MarketTimelock",
-  "address": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+  "address": "0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1",
   "network": "sepolia",
   "chainId": "11155111",
   "minDelay": 300,
   "proposers": [
-    "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317"
+    "0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8"
   ],
   "executors": [
     "0x0000000000000000000000000000000000000000"
   ],
   "admin": "0x0000000000000000000000000000000000000000",
-  "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
-  "deployedAt": "2026-09-05T07:01:09.039Z",
-  "blockNumber": 11638781,
-  "txHash": "0x53a96d38b98230bd6026ecaf2f8364b093de00a2be99e486c5d1f65f01882c7f",
+  "deployer": "0xb630f6D1640f85F7778aBABDf76C87eF8a845E0f",
+  "deployedAt": "2026-10-12T11:34:18.487Z",
+  "blockNumber": 11898622,
+  "txHash": "0x0f6c979ace407d264700621ef77df344cd7e436f6e2e1dfd43cd573ea4a78763",
   "note": "角色：多签可提案可撤销，执行对公众开放，无管理员后门"
 }

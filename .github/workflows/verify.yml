@@ -54,20 +54,20 @@ jobs:
       - name: 验证 SimpleMarket
         continue-on-error: true
         run: |
-          npx hardhat verify --network sepolia 0x71450D767f2b83722b88164316d7308DB20A39c8 \
-            0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8 \
+          npx hardhat verify --network sepolia 0x28279Df8E6656BcC1f6204dD744590b101ccE021 \
+            0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1 \
             250
 
       - name: 验证 MultiSigOwner（数组参数，用参数文件传入）
         continue-on-error: true
         run: |
-          npx hardhat verify --network sepolia 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317 \
+          npx hardhat verify --network sepolia 0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8 \
             --constructor-args scripts/verify-args/multisig-args.js
 
       - name: 验证 MarketTimelock（数组参数，用参数文件传入）
         continue-on-error: true
         run: |
-          npx hardhat verify --network sepolia 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119 \
+          npx hardhat verify --network sepolia 0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1 \
             --constructor-args scripts/verify-args/timelock-args.js
 
       # 构造参数已用链上部署交易 calldata 回校：initialOwner=0xe3C2...afCd8, initialSupply=1000000

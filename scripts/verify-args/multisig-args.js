@@ -9,9 +9,9 @@
 module.exports = [
   // owners_：三个多签成员，必须与链上 getOwners() 完全一致（顺序也要一致）
   [
-    "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
-    "0xb9a429a3b101015DdeE57569360b73c36E646a32",
-    "0x38e1969A889bF4912919D4b93cdF3c06dC6cd72a",
+    "0xb630f6D1640f85F7778aBABDf76C87eF8a845E0f",
+    "0x17913c094cD71b828d1F5C5f8D492f8c6CE5fb48",
+    "0x1223100eCfA183300E59c95ED5b53A6DdE05f64C",
   ],
   // threshold_：2 / 3，两人同意才能执行
   2,

@@ -1,0 +1,17 @@
+{
+  "contract": "MultiSigOwner",
+  "address": "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
+  "network": "sepolia",
+  "chainId": "11155111",
+  "owners": [
+    "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+    "0xb9a429a3b101015DdeE57569360b73c36E646a32",
+    "0x38e1969A889bF4912919D4b93cdF3c06dC6cd72a"
+  ],
+  "threshold": 2,
+  "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "deployedAt": "2026-09-05T03:24:07.662Z",
+  "blockNumber": 11637734,
+  "txHash": "0xe7e5475ffa7c04be377b2c930a0ffff760c8adf3d4dcae4d49f1d94fd8efc04a",
+  "note": "部署后已回读链上 threshold / getOwners / isOwner 校验"
+}

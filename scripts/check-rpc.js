@@ -33,7 +33,7 @@ async function checkOne(url) {
     // 再探一次历史日志查询能力（很多公共节点对大范围 getLogs 有限制）
     try {
       const logs = await withTimeout(
-        p.getLogs({ fromBlock: Math.max(0, n - 2000), toBlock: n, address: "0x71450D767f2b83722b88164316d7308DB20A39c8" }),
+        p.getLogs({ fromBlock: Math.max(0, n - 2000), toBlock: n, address: "0x28279Df8E6656BcC1f6204dD744590b101ccE021" }),
         8000
       );
       r.logsOk = true;

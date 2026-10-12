@@ -18,17 +18,17 @@ const TARGETS = [
   },
   {
     name: "SimpleMarket",
-    address: "0x71450D767f2b83722b88164316d7308DB20A39c8",
+    address: "0x28279Df8E6656BcC1f6204dD744590b101ccE021",
     contract: "contracts/SimpleMarket.sol:SimpleMarket",
   },
   {
     name: "MultiSigOwner",
-    address: "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
+    address: "0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8",
     contract: "contracts/MultiSigOwner.sol:MultiSigOwner",
   },
   {
     name: "MarketTimelock",
-    address: "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+    address: "0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1",
     contract: "contracts/MarketTimelock.sol:MarketTimelock",
   },
 ];

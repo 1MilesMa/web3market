@@ -36,39 +36,39 @@ const TARGETS = [
   },
   {
     name: "SimpleMarket",
-    address: "0x71450D767f2b83722b88164316d7308DB20A39c8",
+    address: "0x28279Df8E6656BcC1f6204dD744590b101ccE021",
     source: "contracts/SimpleMarket.sol",
     contract: "SimpleMarket",
     ctorTypes: ["address", "uint256"],
     ctorValues: [
-      "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8", // initialOwner
+      "0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1", // initialOwner
       "250", // feeBps（2.5%）
     ],
   },
   {
     name: "MultiSigOwner",
-    address: "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
+    address: "0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8",
     source: "contracts/MultiSigOwner.sol",
     contract: "MultiSigOwner",
     ctorTypes: ["address[]", "uint256"],
     ctorValues: [
       [
-        "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
-        "0xb9a429a3b101015DdeE57569360b73c36E646a32",
-        "0x38e1969A889bF4912919D4b93cdF3c06dC6cd72a",
+        "0xb630f6D1640f85F7778aBABDf76C87eF8a845E0f",
+        "0x17913c094cD71b828d1F5C5f8D492f8c6CE5fb48",
+        "0x1223100eCfA183300E59c95ED5b53A6DdE05f64C",
       ], // owners_（顺序必须与链上 getOwners() 一致）
       "2", // threshold_
     ],
   },
   {
     name: "MarketTimelock",
-    address: "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+    address: "0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1",
     source: "contracts/MarketTimelock.sol",
     contract: "MarketTimelock",
     ctorTypes: ["uint256", "address[]", "address[]", "address"],
     ctorValues: [
       "300", // minDelay（秒）
-      ["0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317"], // proposers（仅多签可提案）
+      ["0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8"], // proposers（仅多签可提案）
       ["0x0000000000000000000000000000000000000000"], // executors（0 地址＝开放执行）
       "0x0000000000000000000000000000000000000000", // admin（0 地址＝无管理员）
     ],

@@ -1,21 +1,23 @@
 {
   "contract": "SimpleMarket",
-  "address": "0x71450D767f2b83722b88164316d7308DB20A39c8",
+  "address": "0x28279Df8E6656BcC1f6204dD744590b101ccE021",
   "network": "sepolia",
   "chainId": "11155111",
-  "owner": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
-  "deployer": "0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8",
+  "owner": "0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1",
+  "deployer": "0xb630f6D1640f85F7778aBABDf76C87eF8a845E0f",
   "feeBps": 250,
-  "deployedAt": "2026-09-04T03:58:20.202Z",
-  "blockNumber": 11631015,
-  "blockNumberSource": "由 eth_getCode 历史状态二分核实（11631014=0x / 11631015=有代码）",
-  "currentOwner": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
+  "deployedAt": "2026-10-12T11:34:51.070Z",
+  "blockNumber": 11898625,
+  "blockNumberSource": "取自 deploy-market.js 部署交易回执",
+  "txHash": "0xd08d808e2d2dcbe195fb78f20c3da39cd5715e0467dceabc889227dea6f2e1a4",
+  "gasUsed": "18166198",
+  "currentOwner": "0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1",
   "governance": {
-    "timelock": "0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119",
-    "multisigOwner": "0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317",
+    "timelock": "0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1",
+    "multisigOwner": "0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8",
     "minDelaySeconds": 300,
-    "note": "SimpleMarket 的 owner 已由部署者 EOA 移交 MarketTimelock；时间锁的 proposer/executor 为 MultiSigOwner 多签（3 owner / 阈值 2）。owner 字段保留部署时的历史值，实际权限以链上 owner() 为准。"
+    "note": "本市场部署时 owner 直接设为 MarketTimelock（2026-10-12 治理重建）；时间锁 proposer/canceller 为新 MultiSigOwner（3 owner / 阈值 2）。旧 MultiSigOwner 0xC6b8…5317 / 旧 MarketTimelock 0xdF08…e119 已作废。"
   },
   "ownerTransferredAtBlock": null,
-  "ownerNote": "部署时为部署者 EOA，后经 2/2 多签治理移交 MarketTimelock；链上以 owner() 为准"
+  "ownerNote": "部署即归 MarketTimelock；未发生 owner 移交操作"
 }
