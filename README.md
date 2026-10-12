@@ -25,10 +25,10 @@
 
 | 合约 | 地址 | 部署区块 | 源码验证 |
 |---|---|---|---|
-| `SimpleMarket` 市场 | [`0x71450D767f2b83722b88164316d7308DB20A39c8`](https://sepolia.etherscan.io/address/0x71450D767f2b83722b88164316d7308DB20A39c8) | 11631015 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0x71450D767f2b83722b88164316d7308DB20A39c8/) |
+| `SimpleMarket` 市场 | [`0x28279Df8E6656BcC1f6204dD744590b101ccE021`](https://sepolia.etherscan.io/address/0x28279Df8E6656BcC1f6204dD744590b101ccE021) | 11898625 | Sourcify 待上传（v1 通道已下线） |
 | `MyNFT` ERC721 + 版税 | [`0x9EFe00123a6A22d903D63E195B7E87Bf3622412e`](https://sepolia.etherscan.io/address/0x9EFe00123a6A22d903D63E195B7E87Bf3622412e) | 11631013 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0x9EFe00123a6A22d903D63E195B7E87Bf3622412e/) |
-| `MultiSigOwner` 2/3 多签 | [`0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317`](https://sepolia.etherscan.io/address/0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317) | 11637734 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317/) |
-| `MarketTimelock` 时间锁 | [`0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119`](https://sepolia.etherscan.io/address/0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119) | 11638781 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119/) |
+| `MultiSigOwner` 2/3 多签 | [`0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8`](https://sepolia.etherscan.io/address/0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8) | 11898618 | [Sourcify `exact_match`](https://repo.sourcify.dev/contracts/full_match/11155111/0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8/) |
+| `MarketTimelock` 时间锁 | [`0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1`](https://sepolia.etherscan.io/address/0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1) | 11898622 | [Sourcify `match`（部分匹配）](https://repo.sourcify.dev/contracts/partial_match/11155111/0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1/) |
 
 > `SimpleMarket` / `MyNFT` 的 owner 已收口到 `MarketTimelock`——单人已经改不了费率，两人串通也要先公示 300 秒。练手合约 `MyToken` 的 owner 请以链上 `owner()` 实时值为准：部署产物 `deployments\*.json` 里的 `owner` 只是部署那一刻的快照，治理移交不会自动回写。
 > `exact_match` 表示链上字节码与公开源码 + 编译设置在**字节级完全一致**，任何人都能独立核对；Etherscan 域名在本机网络不可达，故验证走 Sourcify 完成，离线验证包见 `verify-bundle/`。
@@ -165,9 +165,9 @@ cd frontend && node serve.js   # 打开 http://localhost:5173 进入链上操作
 | HelloWeb3 | `0x07f6736520685181c22bd0B58714C7a30B92bb3a` | 11613406 | 670,426 | — |
 | MyToken（现行） | `0x0D85B220d780D6BD462cC5931B6a79d00bCC0A18` | 11649632 | 709,837 | ERC20，练手合约；旧地址 `0xcc9f3027…BA0A05` 已作废 |
 | MyNFT | `0x9EFe00123a6A22d903D63E195B7E87Bf3622412e` | 11631013 | 2,108,841 | 版税 5%（500/10000），receiver = owner；**现任 owner = MarketTimelock（2026-09-06 移交完成）** |
-| **SimpleMarket（现行 · 含 EIP-712）** | **`0x71450D767f2b83722b88164316d7308DB20A39c8`** | 11631015 | 2,582,768 | `feeBps = 250`（2.5%），**现任 owner = MarketTimelock**（2026-09-05 由多签移交，详见第九节），支持 `fulfillListing` / `listingNonces` |
-| **MultiSigOwner（2/3 治理）** | **`0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317`** | 11637734 | 1,336,270 | 成员 3 人、阈值 2；先接管 SimpleMarket owner，再作为**时间锁唯一 proposer / canceller** 继续掌权（2026-09-05，10 笔交易、gas 939,152） |
-| **MarketTimelock（公示治理）** | **`0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119`** | 11638781 | 1,608,860 | `minDelay = 300s`；proposer = 多签，executor = 零地址（开放执行），admin = 零地址（无后门）；**SimpleMarket 现任 owner** |
+| **SimpleMarket（现行 · 含 EIP-712）** | **`0x28279Df8E6656BcC1f6204dD744590b101ccE021`** | 11898625 | 18,166,198 | `feeBps = 250`（2.5%），**现任 owner = 新 MarketTimelock `0xf94f4f57…24A1`（2026-10-12 治理重建时直接指定）**，支持 `fulfillListing` / `listingNonces` |
+| **MultiSigOwner（2/3 治理）** | **`0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8`** | 11898618 | 8,861,832 | 成员 3 人、阈值 2；2026-10-12 治理重建时部署，作为**新时间锁唯一 proposer / canceller** 掌权 |
+| **MarketTimelock（公示治理）** | **`0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1`** | 11898622 | 10,916,202 | `minDelay = 300s`；proposer = 新多签，executor = 零地址（开放执行），admin = 零地址（无后门）；**SimpleMarket 现任 owner**（2026-10-12 治理重建时直接指定） |
 
 ### 已作废地址（勿用）
 
@@ -334,7 +334,7 @@ npx hardhat run scripts/practice-multisig.js
 
 | 项目 | 值 |
 |---|---|
-| 多签地址 | `0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317` |
+| 多签地址 | `0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8`（旧 `0xC6b85AbB…5317` 已作废，2026-10-12） |
 | 部署交易 | `0xe7e5475ffa7c04be377b2c930a0ffff760c8adf3d4dcae4d49f1d94fd8efc04a` |
 | 区块 / gasUsed | 11637734 / 1,336,270 |
 | 部署后校验 | 回读链上 `threshold` = 2、`getOwners()` = 3 人、三个地址 `isOwner` 均为 true |
@@ -677,6 +677,8 @@ slither . --filter-paths node_modules > slither-multisig.log 2>&1
 
 ### 九、时间锁治理：在多签之上再加一道公示（2026-09-05）
 
+> 本节记录的是 2026-09-05 的旧治理交接过程。**该旧治理已于 2026-10-12 全部作废**（三把 owner 私钥丢失，无法凑票），现行地址见第九节新增的《治理重建记录》与第一节地址表。
+
 **为什么有了多签还不够**：多签解决的是"不能一个人说了算"，但它管不了"两个人半夜偷偷改完就跑"。用户看到费率被改时，钱可能已经按新费率成交了。时间锁补上的是**反应窗口**——任何敏感操作必须提前排队、公开晒满公示期才能生效，期间任何人都能在区块浏览器上看到，发现不对劲还来得及撤资或抗议。
 
 **合约实现**：`contracts/MarketTimelock.sol` 是 OpenZeppelin `TimelockController` 的**薄封装，零新增逻辑**。用现成审计实现、一行业务逻辑都不加，是本轮刻意的选择——时间锁的每一行自定义代码都是新的攻击面，没必要自己发明。
@@ -766,6 +768,34 @@ MyToken 是 ERC20，`owner` 握着 `onlyOwner` 的 `mint` / `burn`——留在�
 延迟不是写死的：多签排一次 `updateDelay(3600)`，等公示走完即可改成 1 小时，改完立即生效。也就是说**今天用 5 分钟验证链路，明天想加严，成本只是一次治理流程**。
 
 **验证覆盖**：本地演练 31 项断言全 PASS（零 gas）+ 单元测试 `TimelockGovernance.test.js` 7 passing（全量 `npx hardhat test` **303 passing / 0 failing**（2026-09-05 实测），零回归）+ Slither 复检 68 合约 / 59 条结果**新增合约零告警**。脚本全部可重入，跑到任何一步被中断，重跑都能接着走。
+
+#### 治理重建记录（2026-10-12）
+
+**为什么重建**：2026-09-05 建立的旧治理（多签 + 时间锁）的三把 owner 私钥全部丢失——多签永久无法凑够 2 票，时间锁永久无法提案，市场 owner 权限（改费率 / 暂停 / 提平台费）随之全部锁死。私钥恢复尝试共 954 个候选，0 命中。于是 2026-10-12 在链上重建整套治理，并部署了 bug #7 修复版市场；旧治理自该时点起链上再无任何权力。
+
+**新地址（三个，全部生效）**：
+
+| 合约 | 地址 | 部署区块 | 部署 txHash | gasUsed |
+|---|---|---|---|---|
+| `MultiSigOwner`（3 成员 / 阈值 2） | `0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8` | 11898618 | `0x00697c040d4a790d79817505b9affcbbd6ba4b253c800bf37d2a019f8df0e60a` | 8,861,832 |
+| `MarketTimelock`（minDelay 300s） | `0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1` | 11898622 | `0x0f6c979ace407d264700621ef77df344cd7e436f6e2e1dfd43cd573ea4a78763` | 10,916,202 |
+| `SimpleMarket`（owner = 新时间锁，feeBps 250） | `0x28279Df8E6656BcC1f6204dD744590b101ccE021` | 11898625 | `0xd08d808e2d2dcbe195fb78f20c3da39cd5715e0467dceabc889227dea6f2e1a4` | 18,166,198 |
+
+新多签三成员为同一持有人的三个测试网账户（`0xb630f6D1…5E0f` / `0x17913c09…fb48` / `0x1223100e…f64C`）；三笔部署由账户一在 nonce 29 / 30 / 31 连续发出，任何人可用 nonce 独立推算复核三个地址。新时间锁回读校验 5/5 通过（新多签持 PROPOSER + CANCELLER、执行权限对公众开放、无管理员后门）。
+
+**旧地址作废清单（勿用）**：
+
+| 作废合约 | 旧地址 | 状态 |
+|---|---|---|
+| 旧 `MultiSigOwner` | `0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317` | 三把 owner 私钥全丢失，永久无法凑票 |
+| 旧 `MarketTimelock` | `0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119` | proposer 是已作废的旧多签，永久无法提案 |
+| 旧 `SimpleMarket` | `0x71450D767f2b83722b88164316d7308DB20A39c8` | owner 是旧时间锁，费提不出、暂停不了 |
+
+**旧市场滞留资金（永久锁定，账目已对清）**：旧市场合约余额 `0.0014375 ETH` 永久滞留，构成 = 平台费 `0.0002625` + 待领版税 `0.000175` + 在途出价 `0.001`。owner 权限随旧治理死亡，任何人（含部署者）都无法再取出——这是私钥丢失的直接代价，如实记账。
+
+**`MyNFT` / `MyToken` 仍受旧治理冻结**：两者本轮**未重部署**，owner 仍是旧时间锁，其 `onlyOwner` 功能（改版税、公开铸造开关、增发）随旧治理一并冻结；转账与在市场上交易等不涉 owner 的功能不受影响。
+
+**待办**：新市场的 Sourcify 验证**待手动上传**——Sourcify v1 API 已被官方下线（404 `API v1 is removed`），脚本无法提交，需用 `verify-bundle/SimpleMarket-standard-input.json` + 构造参数在 Sourcify 官网手动提交（步骤见 `verify-bundle/UPLOAD-GUIDE.md`）。新多签 / 新时间锁已分别取得 Sourcify `exact_match` / `match`（v2 只读 API 实测）。
 
 ---
 

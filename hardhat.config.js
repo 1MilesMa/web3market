@@ -65,8 +65,9 @@ module.exports = {
   },
 
   // Sourcify：去中心化的合约源码验证服务（备用验证通道）
-  // 与 Etherscan 的区别：不需要 API Key、源码存 IPFS、任何兼容浏览器都能读取
-  // 本机到 Etherscan 全域名超时，Sourcify 可达，因此作为主力验证通道
+  // 注意：Sourcify v1 API 已于 2026-10 下线（404 "API v1 is removed"），本仓库的
+  //       verify-sourcify.js 走 v1 会失败；主通道用 Etherscan（V2 单 key），
+  //       Sourcify 侧改用 v2 API 只读查询或官网手动上传。
   sourcify: {
     // 插件默认关闭，必须显式打开
     enabled: true,

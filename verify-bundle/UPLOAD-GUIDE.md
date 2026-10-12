@@ -16,6 +16,7 @@
 | SimpleMarket | `0x28279Df8E6656BcC1f6204dD744590b101ccE021` | SimpleMarket-standard-input.json | SimpleMarket-constructor-args.txt |
 | MultiSigOwner | `0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8` | MultiSigOwner-standard-input.json | MultiSigOwner-constructor-args.txt |
 | MarketTimelock | `0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1` | MarketTimelock-standard-input.json | MarketTimelock-constructor-args.txt |
+> 说明：本目录另有 `MyToken-standard-input.json` / `MyToken-constructor-args.txt`，它们是**旧 MyToken（`0xcc9f3027899899c743593E98be543B75B7BA0A05`，initialOwner `0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8`）**的存量验证包，**不可用于现行 MyToken `0x0D85B220d780D6BD462cC5931B6a79d00bCC0A18`**。现行 MyToken 如需验证，另行生成。
 
 ## 上传步骤（每个合约重复一次）
 
@@ -48,4 +49,4 @@
 
 ---
 
-生成时间：2026-10-12T11:40:46.096Z
+生成时间：2026-10-12T12:40:32.757Z

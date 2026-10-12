@@ -2,7 +2,7 @@
 // 数组类型的构造参数无法在命令行直接传，必须用 --constructor-args 指向本文件
 //
 // 用法：
-//   npx hardhat verify --network sepolia 0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119 \
+//   npx hardhat verify --network sepolia 0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1 \
 //     --constructor-args scripts/verify-args/timelock-args.js
 //
 // 对应合约构造函数：

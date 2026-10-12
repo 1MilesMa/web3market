@@ -12,6 +12,7 @@
   "deployer": "0xb630f6D1640f85F7778aBABDf76C87eF8a845E0f",
   "deployedAt": "2026-10-12T11:33:28.606Z",
   "blockNumber": 11898618,
+  "gasUsed": "8861832",
   "txHash": "0x00697c040d4a790d79817505b9affcbbd6ba4b253c800bf37d2a019f8df0e60a",
   "note": "部署后已回读链上 threshold / getOwners / isOwner 校验"
 }

@@ -144,6 +144,9 @@ async function main() {
         (s) =>
           `| ${s.name} | \`${s.address}\` | ${s.name}-standard-input.json | ${s.name}-constructor-args.txt |`
       ),
+    // 下面这段 MyToken 存量包说明为手工维护的静态文本，固定输出到 UPLOAD-GUIDE.md，勿删。
+    // （MyToken 不在 TARGETS 里，上方表格不会输出它的行；卡 28 · 2026-10-12 根治：此前手工补行会被整文件覆盖冲掉）
+    "> 说明：本目录另有 `MyToken-standard-input.json` / `MyToken-constructor-args.txt`，它们是**旧 MyToken（`0xcc9f3027899899c743593E98be543B75B7BA0A05`，initialOwner `0xe3C2B262B0AbC952ff0a56868cf2B7A4E6AafCd8`）**的存量验证包，**不可用于现行 MyToken `0x0D85B220d780D6BD462cC5931B6a79d00bCC0A18`**。现行 MyToken 如需验证，另行生成。",
     "",
     "## 上传步骤（每个合约重复一次）",
     "",

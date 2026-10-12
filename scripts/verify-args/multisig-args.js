@@ -2,7 +2,7 @@
 // 数组类型的构造参数无法在命令行直接传，必须用 --constructor-args 指向本文件
 //
 // 用法：
-//   npx hardhat verify --network sepolia 0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317 \
+//   npx hardhat verify --network sepolia 0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8 \
 //     --constructor-args scripts/verify-args/multisig-args.js
 //
 // 对应合约构造函数：constructor(address[] memory owners_, uint256 threshold_)
