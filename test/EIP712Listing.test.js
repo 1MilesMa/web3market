@@ -461,6 +461,25 @@ describe("SimpleMarket · EIP-712 链下签名挂单", function () {
     expect((await market.getListing(nftAddr, 1)).active).to.equal(true); // 链上挂单不受影响
   });
 
+  it("【bug #7 修复】同一 tokenId 既有链上挂单又走签名成交：成交后挂单被清掉", async function () {
+    const fx = await loadFixture(deployFixture);
+    const { seller, buyer, nft, nftAddr, market, marketAddr } = fx;
+    await nft.connect(seller).setApprovalForAll(marketAddr, true);
+
+    // 卖家先用 list() 在链上挂了 #1
+    await market.connect(seller).list(nftAddr, 1, PRICE);
+    expect((await market.getListing(nftAddr, 1)).active).to.equal(true);
+
+    // 然后又用 EIP-712 签名成交 #1
+    const { value, signature } = await makeIntent(fx, { tokenId: 1 });
+    await market.connect(buyer).fulfillListing(value, seller.address, signature, { value: PRICE });
+
+    // NFT 易主
+    expect(await nft.ownerOf(1)).to.equal(buyer.address);
+    // 修复点：链上挂单必须被清掉，不能残留 active=true
+    expect((await market.getListing(nftAddr, 1)).active).to.equal(false);
+  });
+
   // ==========================================================================
   // 八、gas 收益
   // ==========================================================================

@@ -530,8 +530,8 @@ contract SimpleMarket is Ownable2Step, ReentrancyGuard, EIP712, Pausable {
         }
 
         /* ---------------- Effects（改状态） ---------------- */
-        // 先置失效再转账 —— 这样即使后面有重入，也进不到这里
-        listing.active = false;
+        // 清挂单的动作已收敛到 _settleSale（成交即清挂单，三个成交入口统一生效）。
+        // 这里不再单独设 listing.active = false，避免两处逻辑漂移。
 
         /* ---------------- Interactions（外部调用） ---------------- */
         // 分账、转 NFT、给卖家打款，全部收敛到 _settleSale：
@@ -875,6 +875,16 @@ contract SimpleMarket is Ownable2Step, ReentrancyGuard, EIP712, Pausable {
         address buyer,
         uint256 price
     ) private returns (uint256 fee) {
+        // 成交即清掉该 NFT 上可能存在的链上挂单（bug #7 修复）。
+        // buy() 原本在自己函数体里设 listing.active = false，现统一收敛到此处，
+        // 让 fulfillListing / acceptOffer 成交后也能自动清挂单，避免页面残留脏挂单。
+        // 这是 Effects，必须在 safeTransferFrom 之前完成（CEI）。
+        Listing storage staleListing = _listings[nftContract][tokenId];
+        if (staleListing.active) {
+            staleListing.active = false;
+            emit Canceled(nftContract, tokenId, staleListing.seller);
+        }
+
         // 三方分账：平台手续费 + 创作者版税 + 卖家实得，三者之和恒等于 price
         uint256 royalty;
         address royaltyReceiver;

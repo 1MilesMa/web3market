@@ -1710,6 +1710,26 @@ describe("SimpleMarket", function () {
 
       expect(await ethers.provider.getBalance(marketAddr)).to.equal(fees + royalties);
     });
+
+    it("【bug #7 修复】接受出价成交后，同一 tokenId 上的链上挂单被清掉", async function () {
+      const { seller, buyer, nft, nftAddr, market, marketAddr } = await loadFixture(
+        deployMarketFixture
+      );
+      await nft.connect(seller).setApprovalForAll(marketAddr, true);
+
+      // 卖家先用 list() 挂了 #1
+      await market.connect(seller).list(nftAddr, 1, PRICE);
+      expect((await market.getListing(nftAddr, 1)).active).to.equal(true);
+
+      // 然后接受 buyer 对 #1 的出价
+      await makeOffer(market, buyer, nftAddr, 1, OFFER_B);
+      await market.connect(seller).acceptOffer(nftAddr, 1, buyer.address);
+
+      // NFT 易主
+      expect(await nft.ownerOf(1)).to.equal(buyer.address);
+      // 修复点：链上挂单必须被清掉
+      expect((await market.getListing(nftAddr, 1)).active).to.equal(false);
+    });
   });
 
   // ==========================================================================
