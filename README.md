@@ -11,7 +11,7 @@
 | 项目状态 | |
 |---|---|
 | 网络 | Sepolia 测试网（chainId `11155111`） |
-| 合约 | 5 个地址，**全部通过 Sourcify `exact_match` 源码验证** |
+| 合约 | Sourcify 源码验证分档：`MyNFT` / `MyToken`（现行）/ `MultiSigOwner` = `exact_match`；`MarketTimelock` = `match`（部分匹配）；`SimpleMarket` = 待上传（v1 通道已下线） |
 | 测试 | **305 passing / 0 failing** |
 | 覆盖率 | `SimpleMarket` 语句 / 分支 / 函数 / 行 **全部 100%** |
 | 链上实盘 | 2026-09-13 ~ 09-14 在 Sepolia 真实上链：挂单 / 改价 / 撤单 / 出价 / 接受出价 / **EIP-712 签名两方成交** / 领回版税，逐笔可核对 |
@@ -57,7 +57,7 @@
 | 覆盖率 | `SimpleMarket` 四项指标 100% | `npx hardhat coverage` |
 | 恶意场景 | 13 个攻击合约主动触发修饰符的失败分支（重入、拒收 ETH、假 ERC721 接收器） | `contracts/mocks/MaliciousActors.sol` |
 | 静态分析 | Slither 两轮，零中高危 | `slither .`（Windows 下需 WSL，过程见下方章节） |
-| 源码验证 | 5 个地址 Sourcify `exact_match` | 点上方链接 |
+| 源码验证 | `MyNFT` / `MyToken`（现行）/ `MultiSigOwner` = `exact_match`；`MarketTimelock` = `match`（部分匹配）；`SimpleMarket` = 待上传（v1 通道已下线） | 点上方链接 |
 | 治理实战 | 改费率生效 / 单人 1 票被拒 / 还原，全部链上实跑 | `scripts/verify-multisig-governance.js` |
 | 链上实盘 | 17 笔真实上链交易，含**首次两方成交**（区块 11701717）；区块号 / gasUsed / 事件 / 分账逐项复核 | 见下方「链上实盘记录」章节 |
 
@@ -335,8 +335,8 @@ npx hardhat run scripts/practice-multisig.js
 | 项目 | 值 |
 |---|---|
 | 多签地址 | `0x4944CE5fA39b453aEcEA63a1201d5d3972987EB8`（旧 `0xC6b85AbB…5317` 已作废，2026-10-12） |
-| 部署交易 | `0xe7e5475ffa7c04be377b2c930a0ffff760c8adf3d4dcae4d49f1d94fd8efc04a` |
-| 区块 / gasUsed | 11637734 / 1,336,270 |
+| 部署交易 | `0x00697c040d4a790d79817505b9affcbbd6ba4b253c800bf37d2a019f8df0e60a` |
+| 区块 / gasUsed | 11898618 / 8,861,832 |
 | 部署后校验 | 回读链上 `threshold` = 2、`getOwners()` = 3 人、三个地址 `isOwner` 均为 true |
 
 三位成员即 `.env` 里的三个测试网账号（`PRIVATE_KEY` / `PRIVATE_KEY_2` / `PRIVATE_KEY_3`）。部署脚本是**幂等**的：检测到已部署就复用，不会作废旧地址。
@@ -366,7 +366,7 @@ npx hardhat run scripts/practice-multisig.js
 
 第 2 关特意**换一个成员来触发执行**，为的是在链上留下"挡住它的不是提交者本人的特权，而是阈值"这个证据。
 
-最终状态：`owner` = 多签 `0xC6b85AbB…9B045317`，费率 250 bps，阈值 2，提案总数 4（其中 #2 是那张只有 1 票、永远不会执行的废弃提案）。
+最终状态：`owner` = 多签 `0xC6b85AbB…9B045317`（该多签已于 2026-10-12 作废），费率 250 bps，阈值 2，提案总数 4（其中 #2 是那张只有 1 票、永远不会执行的废弃提案）。
 
 > 想复现：`npx hardhat run scripts/transfer-market-to-multisig.js --network sepolia` 移交，`npx hardhat run scripts/verify-multisig-governance.js --network sepolia` 跑三关。两个脚本都可重入，中途断了再跑一次会接着做，不会重复提交。
 
