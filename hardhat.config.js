@@ -60,9 +60,8 @@ module.exports = {
   // 并在浏览器里调用合约的读方法 —— 这是"你说你做过"变成"别人自己能验证"的关键一步
   // API Key 在 https://etherscan.io/myapikey 免费注册即得
   etherscan: {
-    apiKey: {
-      sepolia: process.env.ETHERSCAN_API_KEY || "",
-    },
+    // 单个字符串 key = 使用 Etherscan V2（统一 key，按 chainid 路由到 Sepolia）
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
   },
 
   // Sourcify：去中心化的合约源码验证服务（备用验证通道）
