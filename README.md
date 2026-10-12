@@ -12,7 +12,7 @@
 |---|---|
 | 网络 | Sepolia 测试网（chainId `11155111`） |
 | 合约 | 5 个地址，**全部通过 Sourcify `exact_match` 源码验证** |
-| 测试 | **303 passing / 0 failing** |
+| 测试 | **305 passing / 0 failing** |
 | 覆盖率 | `SimpleMarket` 语句 / 分支 / 函数 / 行 **全部 100%** |
 | 链上实盘 | 2026-09-13 ~ 09-14 在 Sepolia 真实上链：挂单 / 改价 / 撤单 / 出价 / 接受出价 / **EIP-712 签名两方成交** / 领回版税，逐笔可核对 |
 | 静态分析 | 两轮 Slither：首轮 47 条命中全部为 INFO，治理接管后复检零中高危 |
@@ -53,7 +53,7 @@
 
 | 证据 | 数值 | 怎么复现 |
 |---|---|---|
-| 单元测试 | 303 passing / 0 failing | `npx hardhat test` |
+| 单元测试 | 305 passing / 0 failing | `npx hardhat test` |
 | 覆盖率 | `SimpleMarket` 四项指标 100% | `npx hardhat coverage` |
 | 恶意场景 | 13 个攻击合约主动触发修饰符的失败分支（重入、拒收 ETH、假 ERC721 接收器） | `contracts/mocks/MaliciousActors.sol` |
 | 静态分析 | Slither 两轮，零中高危 | `slither .`（Windows 下需 WSL，过程见下方章节） |
@@ -87,7 +87,7 @@
 - 分账：`0.0015 = 平台费 0.0000375 + 版税 0.000075 + 卖家实得 0.0013875`
 - 签名用掉后 `listingNonces` 递增，同一份签名无法二次使用
 
-**这次也暴露了一个真实缺陷，如实记下**：`fulfillListing`（以及 `acceptOffer`）成交后**不会清掉同一枚 NFT 上原有的链上挂单**——清挂单的那句写在 `buy()` 自己的函数体里，共用的 `_settleSale()` 并不负责。后果是页面仍显示在售，此时点「买入」会在持有者校验处 revert（**不丢钱，只白付一次 gas**），需由原卖家调 `cancel()` 清掉（本次即以此收尾，区块 11701833）。因为改动 `.sol` 会让已部署合约的 Sourcify 验证立即失效，本轮只如实披露、不改代码 —— 见下方已知限制第 7 条。
+**这次也暴露了一个真实缺陷，如实记下**：`fulfillListing`（以及 `acceptOffer`）成交后**不会清掉同一枚 NFT 上原有的链上挂单**——清挂单的那句写在 `buy()` 自己的函数体里，共用的 `_settleSale()` 并不负责。后果是页面仍显示在售，此时点「买入」会在持有者校验处 revert（**不丢钱，只白付一次 gas**），需由原卖家调 `cancel()` 清掉（本次即以此收尾，区块 11701833）。因为改动 `.sol` 意味着新版本需重新部署并重新验证（旧地址的 exact_match 记录不受影响，仍可作『修复前版本』的证据），本轮只如实披露、不改代码 —— 见下方已知限制第 7 条。
 
 ---
 
@@ -101,7 +101,7 @@ npm install
 cp .env.example .env      # 填入 SEPOLIA_RPC_URL 与测试网专用私钥，切勿使用存有真实资产的钱包
 
 npx hardhat compile       # 预期零警告
-npx hardhat test          # 预期 303 passing
+npx hardhat test          # 预期 305 passing
 npx hardhat coverage
 
 cd frontend && node serve.js   # 打开 http://localhost:5173 进入链上操作台
@@ -121,7 +121,7 @@ cd frontend && node serve.js   # 打开 http://localhost:5173 进入链上操作
 | 4 | **暂停权是中心化开关** | 2 人即可冻结全部开仓（不冻结取款）。刻意设计，需配套公示与监控 |
 | 5 | **版税只在市场内强制** | EIP-2981 由本市场执行，场外转账与其他市场可以不付 |
 | 6 | **公共 RPC 无 SLA** | 实测限流返回 HTTP 403；主网须配付费节点 + 备用 |
-| 7 | **签名成交不会清掉链上挂单** | `fulfillListing` / `acceptOffer` 走 `_settleSale`，而清挂单写在 `buy()` 里，成交后旧挂单会残留 `active = true`、页面仍显示在售；此时点「买入」必定 revert（不丢钱，只白浪费 gas），原卖家可用 `cancel()` 清掉。修它须改 `.sol` → 已部署合约的源码验证失效，故本轮只披露不改码。详见上方「链上实盘记录」章节 |
+| 7 | ~~签名成交不会清掉链上挂单~~ **已修复（2026-09-20）** | 原问题：`fulfillListing` / `acceptOffer` 走 `_settleSale`，而清挂单写在 `buy()` 里，成交后旧挂单残留 `active = true`。修复：把清挂单逻辑收敛到 `_settleSale` 开头，三个成交入口（`buy` / `fulfillListing` / `acceptOffer`）成交后统一清掉该 tokenId 的链上挂单，并 emit `Canceled` 事件。新增 2 条测试覆盖同 tokenId 场景，全量 305 passing。修复后需重新部署并重新验证（旧地址的 exact_match 记录不受影响，仍可作『修复前版本』的证据）。修复后 `buy()` 也会 emit `Canceled`（此前只置 `active = false`、不发事件）；前端若用 `Canceled` 统计取消量，口径会变 |
 
 ---
 
@@ -765,7 +765,7 @@ MyToken 是 ERC20，`owner` 握着 `onlyOwner` 的 `mint` / `burn`——留在�
 
 延迟不是写死的：多签排一次 `updateDelay(3600)`，等公示走完即可改成 1 小时，改完立即生效。也就是说**今天用 5 分钟验证链路，明天想加严，成本只是一次治理流程**。
 
-**验证覆盖**：本地演练 31 项断言全 PASS（零 gas）+ 单元测试 `TimelockGovernance.test.js` 7 passing（全量 `npx hardhat test` **303 passing / 0 failing**，零回归）+ Slither 复检 68 合约 / 59 条结果**新增合约零告警**。脚本全部可重入，跑到任何一步被中断，重跑都能接着走。
+**验证覆盖**：本地演练 31 项断言全 PASS（零 gas）+ 单元测试 `TimelockGovernance.test.js` 7 passing（全量 `npx hardhat test` **303 passing / 0 failing**（2026-09-05 实测），零回归）+ Slither 复检 68 合约 / 59 条结果**新增合约零告警**。脚本全部可重入，跑到任何一步被中断，重跑都能接着走。
 
 ---
 
