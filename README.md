@@ -31,7 +31,7 @@
 | `MarketTimelock` 时间锁 | [`0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1`](https://sepolia.etherscan.io/address/0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1) | 11898622 | [Sourcify `match`（部分匹配）](https://repo.sourcify.dev/contracts/partial_match/11155111/0xf94f4f57Ac736e5f2E5104B7EaD1835cAeB224A1/) |
 
 > `SimpleMarket` / `MyNFT` 的 owner 已收口到 `MarketTimelock`——单人已经改不了费率，两人串通也要先公示 300 秒。练手合约 `MyToken` 的 owner 请以链上 `owner()` 实时值为准：部署产物 `deployments\*.json` 里的 `owner` 只是部署那一刻的快照，治理移交不会自动回写。
-> `exact_match` 表示链上字节码与公开源码 + 编译设置在**字节级完全一致**，任何人都能独立核对；Etherscan 域名在本机网络不可达，故验证走 Sourcify 完成，离线验证包见 `verify-bundle/`。
+> `exact_match` 表示链上字节码与公开源码 + 编译设置在**字节级完全一致**，任何人都能独立核对；Etherscan **网站域名**在本机网络不可达，但已于 2026-10-13 经 **Etherscan API**（`chainid 11155111`）完成源码验证，各合约在区块浏览器均可公开阅读与调用（离线验证包见 `verify-bundle/`）。
 > 项目另有两个练手合约 `HelloWeb3`、`MyToken`（ERC20），与业务逻辑无关，不应进入生产；完整地址与部署 gas 见下方「已部署合约」章节。
 
 ---
@@ -731,19 +731,21 @@ slither . --filter-paths node_modules > slither-multisig.log 2>&1
 
 脚本 `scripts/transfer-mynft-to-timelock.js`：默认演练（只读链上状态、打印将要做什么），`EXECUTE=1` 才真正发交易；可重入，中途断开重跑会从断点继续。
 
-#### MyToken 侧移交时间锁（2026-09-06 完成）
+#### MyToken 移交记录（2026-09-06；**2026-10-13 更正**）
 
-MyToken 是 ERC20，`owner` 握着 `onlyOwner` 的 `mint` / `burn`——留在部署者 EOA 手里，等于"项目方还能一个人印钱"。这一步把它并进同一套治理：
+**更正（2026-10-13）**：本节的"移交"记录属于**已作废的旧 MyToken `0xcc9f3027…`**——交易 `0x4b4e388d…` 的目标地址正是该地址，且区块 11647801 **早于**现行版本部署块 11649632。**现行 MyToken `0x0D85B220…` 的 `owner` 自部署起一直是部署者 EOA `0xe3C2B262…aafCd8`**（全历史仅 1 条 `OwnershipTransferred`，块 11649632，`0x0`→A1），**从未并入多签/时间锁**；2026-10-13 由 A1 直接 `transferOwnership(新时间锁 `0xf94f4f57…`)` 一笔并入新治理。以下保留历史记录（作用于旧部署，作过程证据）。
+
+MyToken 是 ERC20，`owner` 握着 `onlyOwner` 的 `mint` / `burn`——留在部署者 EOA 手里，等于"项目方还能一个人印钱"。当年这一步把它并进同一套治理：
 
 ```
 1. 演练   npx hardhat run scripts/transfer-mytoken-to-timelock.js --network sepolia
           读出：owner = 部署者 EOA、多签确为时间锁 proposer、EOA 余额够 gas
 2. 上链   transferOwnership(0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119)
           tx 0x4b4e388d7b9a912d213f55f53a112fdbd6dc87f930312199607ab03faa6db893
-          区块 11647801，gas 28,656 → MyToken.owner() = 时间锁
+          区块 11647801，gas 28,656 → 当时那枚练习币的 owner = 时间锁（**已作废的旧部署 `0xcc9f3027…`，非现行版本**）
 ```
 
-与 MyNFT 的差异值得记一笔：MyNFT 是 `Ownable2Step`，必须「提名 → 对方 acceptOwnership」两步，而 accept 只能由时间锁发起，所以要多签排队 + 公示；MyToken 是普通 `Ownable`，`transferOwnership` 一笔到位，**不需要走公示**——因为移交那一刻权力完整地从 EOA 移到时间锁，中间没有需要被监督的空档。移交之后，想再增发同样得 2/2 多签排队 + 300 秒公示。
+与 MyNFT 的差异值得记一笔：MyNFT 是 `Ownable2Step`，必须「提名 → 对方 acceptOwnership」两步，而 accept 只能由时间锁发起，所以要多签排队 + 公示；练习币是普通 `Ownable`，`transferOwnership` 一笔到位，**不需要走公示**——因为移交那一刻权力完整地从 EOA 移到时间锁，中间没有需要被监督的空档。**更正**：上述差异仅适用于当年的旧部署；**现行 MyToken `0x0D85B220…` 从未走过这一步**，其 owner 一直是部署者 EOA，直到 2026-10-13 才由 A1 直接 `transferOwnership(新时间锁 `0xf94f4f57…`)` 并入新治理。并入之后，想再增发同样得走新治理的多签排队 + 300 秒公示。
 
 **HelloWeb3 为何不收编**：它的 `owner` 只是部署时在构造函数里记下的一个地址，源码里没有 `onlyOwner` 函数、也没有 `transferOwnership`，**既无实权也无处可交**。留着不影响任何安全结论。
 
@@ -789,11 +791,11 @@ MyToken 是 ERC20，`owner` 握着 `onlyOwner` 的 `mint` / `burn`——留在�
 |---|---|---|
 | 旧 `MultiSigOwner` | `0xC6b85AbB9A0c00495d75C8C52Ad922DD9B045317` | 三把 owner 私钥的**保管介质是一份 `.env` 截图**（非丢失），2026-10-13 由老板找回、反推地址 **3/3 命中**；技术上仍可凑票，已被项目主动停用 |
 | 旧 `MarketTimelock` | `0xdF0886dCFEB54538cDC9Df59BF0E7e3e061Ee119` | proposer 是旧多签（技术上仍可提案），已被项目主动停用 |
-| 旧 `SimpleMarket` | `0x71450D767f2b83722b88164316d7308DB20A39c8` | owner 是旧时间锁；旧治理技术上仍可动用，但已被项目主动停用（滞留资金已于 2026-10-13 处置结清，见《2026-10-13 旧钥匙归位与处置》） |
+| 旧 `SimpleMarket` | `0x71450D767f2b83722b88164316d7308DB20A39c8` | owner **原为旧时间锁，2026-10-13 已移交新时间锁**（与现行治理架构一致）；滞留资金已于 2026-10-13 处置结清，见《2026-10-13 旧钥匙归位与处置》与《2026-10-13 旧资产并入新治理》 |
 
 **旧市场滞留资金（账目已对清；2026-10-13 处置结清）**：旧市场合约余额 `0.0014375 ETH`，构成 = 平台费 `0.0002625` + 待领版税 `0.000175` + 在途出价 `0.001`。**版税 0.000175 + 在途出价 0.001 可由对应账户自行取回**，平台费 `0.0002625` 需旧治理提案——技术上可行，经旧多签 2/3 提案 → 旧时间锁 300 秒公示 → `withdrawFees` 完成（这也是"旧治理仍可动用"的链上实证）；项目已于 2026-10-13 按卡处置结清，逐笔 txHash 见《2026-10-13 旧钥匙归位与处置》。
 
-**`MyNFT` / `MyToken` 与旧治理**：两者本轮**未重部署**，owner 是旧时间锁；**旧治理可动用但其已被项目主动停用**，`onlyOwner` 功能（改版税、公开铸造开关、增发）的处置见《2026-10-13 旧钥匙归位与处置》；转账与在市场上交易等不涉 owner 的功能不受影响。
+**`MyNFT` / `MyToken` 与旧治理**：两者本轮**未重部署**。`MyNFT` 的 owner 是**旧时间锁**（2026-10-13 已移交新时间锁，见下）；**现行 `MyToken` `0x0D85B220…` 的 owner 一直是部署者 EOA `0xe3C2…afCd8`**（从未并入旧多签/时间锁，2026-10-13 由该 EOA 直接并入新时间锁）。**旧治理可动用但其已被项目主动停用**，`onlyOwner` 功能（改版税、公开铸造开关、增发）的处置见《2026-10-13 旧钥匙归位与处置》；转账与在市场上交易等不涉 owner 的功能不受影响。
 
 **待办**：新市场的 Sourcify 验证**待手动上传**——Sourcify v1 API 已被官方下线（404 `API v1 is removed`），脚本无法提交，需用 `verify-bundle/SimpleMarket-standard-input.json` + 构造参数在 Sourcify 官网手动提交（步骤见 `verify-bundle/UPLOAD-GUIDE.md`）。新多签 / 新时间锁已分别取得 Sourcify `exact_match` / `match`（v2 只读 API 实测）。
 
@@ -817,12 +819,40 @@ MyToken 是 ERC20，`owner` 握着 `onlyOwner` 的 `mint` / `burn`——留在�
 
 > 交易明细（txHash / 区块 / 状态）统一记录于本地日志 `D:\web3\_trae-oldkeys-rescue-20261013.log`（只含 txHash / 区块 / 状态 / 地址 / 私钥变量名）；只读盘点见 `logs/oldkeys-rescue-inventory-20261013.json`。
 
+#### 2026-10-13 旧资产并入新治理（旧合约 owner 移交）
+
+旧 `MyNFT` / 旧 `SimpleMarket` / `MyToken` 的 owner 于 2026-10-13 全部并入**新时间锁 `0xf94f4f57…4A1`**，与现行治理架构一致（市场 owner = 时间锁；治理入口 = 新多签 `0x4944CE5f…EB8` 2/3 提案 + 300 秒公示）：
+
+| 合约 | 原 owner | 新 owner | 路径 | txHash |
+|---|---|---|---|---|
+| `MyNFT` `0x9EFe0012…` | 旧时间锁 | 新时间锁 | 旧多签 2/3（txId14）→ 旧时间锁 300s 公示 → `transferOwnership`（提名）→ 新多签 2/3（txId0）→ 新时间锁 300s 公示 → `acceptOwnership` | 提名执行 `0x26b366b4…`；接受执行 `0x5060887a…` |
+| 旧 `SimpleMarket` `0x71450D76…` | 旧时间锁 | 新时间锁 | 同上（与 `MyNFT` 同一批次） | 同上 |
+| `MyToken` `0x0D85B220…` | 部署者 EOA `0xe3C2…afCd8` | 新时间锁 | 单步 `Ownable`，该 EOA 直接 `transferOwnership`（无需公示） | `0x0d9cb3f4…` |
+
+旧多签提案明细：submit `0xcfe99bc7…` / confirm `0xdd00960a…` / execute `0x95b39242…`（txId14）；新多签提案明细：submit `0xd64f7cb2…` / confirm `0x052b5eda…` / execute `0xe445280d…`（txId0）。
+
+**治理归属图（2026-10-13 终态）**：
+
+```
+旧多签 0xC6b85AbB…(3 owner / 阈值 2) ──提案──▶ 旧时间锁 0xdF0886dC…(minDelay 300，执行权对公众开放)
+                                                      │ transferOwnership(提名)
+                                                      ▼
+新多签 0x4944CE5f…(3 owner / 阈值 2) ──提案──▶ 新时间锁 0xf94f4f57…(minDelay 300，执行权对公众开放)
+                                                      │ acceptOwnership
+                                                      ▼
+  MyNFT / 旧 SimpleMarket / MyToken / 新 SimpleMarket(0x28279Df8…)  ← owner 全部 = 新时间锁（统一治理）
+```
+
+**资产去向**：7 枚原版 `MyNFT` 由展示账户 `0x74df9fb1…60B2` 持有（其中 token#2 / token#3 已于 2026-10-13 在新市场真实成交、转入买家 `0xb630f6D1…5E0f`）；旧市场滞留资金 `0.0014375 ETH` 全部结清并入展示账户。
+
+**旧账户退役**：`0xe3C2…afCd8` / `0xb9a4…46a32` / `0x38e1…d72a` 三账户终态 ETH 余额均为 0；三把旧钥按已泄露处置，用毕已从本机 `.env` 删除（`PRIVATE_KEY_OLD_1/2/3`）。
+
 ---
 
 ## 后续路线
 
 - ~~**Slither 静态分析**~~ **已完成两轮**：2026-09-03 首轮（WSL2，47 条全 INFO）；2026-09-05 接管后全量复检（本机 Windows，58 合约 / 53 条结果，零中高危），报告存 `slither-multisig.log`，结论见第六、七、八节。
-- **Etherscan 源码验证**（**待办**）：需要一枚 Etherscan API Key（免费注册即得）。拿到后逐个合约提交源码验证，验证通过即可在区块浏览器上公开阅读与直接调用。
+- ~~**Etherscan 源码验证**~~ **已完成（2026-10-13）**：`SimpleMarket 0x28279Df8…` / `MultiSigOwner 0x4944CE5f…`（含旧 `0xC6b85AbB…`）/ `MarketTimelock 0xf94f4f57…`（含旧 `0xdF0886dC…`）/ `MyNFT 0x9EFe0012…` / `MyToken 0x0D85B220…` 均已开源（编译器 `v0.8.28`），合约可在区块浏览器上公开阅读与直接调用（验证经 Etherscan API 完成，见上）。
 - ~~**多签治理上链**~~ **已于 2026-09-05 完成**：多签部署 + owner 移交 + 治理三关全部在 Sepolia 跑通（10 笔交易，gas 939,152，区块 11638095 – 11638123）。市场 owner 现由多签持有，单人已无法改费率。
 - ~~**时间锁治理上链**~~ **已于 2026-09-05 完成**：时间锁部署 + owner 从多签移交 + 治理实战（改费率 → 生效 → 还原）+ 三项越权拦截全部在 Sepolia 跑通（12 笔交易，gas 3,200,131，区块 11638781 – 11638906）。市场 owner 现由时间锁持有，敏感操作必须「2 票通过 + 公示满点」。详见第九节。
 - ~~**链上出价实跑**~~ **已于 2026-09-02 完成**：`.env` 已补齐 `PRIVATE_KEY_3`，`npx hardhat run scripts/practice-offer.js --network sepolia` 执行完毕，24 项校验全过（详见上方「链上实跑记录」）。
