@@ -1,0 +1,7 @@
+{
+  "address": "0x74df9fb14EF6B83C7eb6a5c62e0A4bD6C5Dc60B2",
+  "createdAt": "2026-10-13T06:52:37.913Z",
+  "network": "sepolia",
+  "purpose": "展示账户：接收旧多签旧账户 0xe3C2…afCd8 / 0xb9a4…46a32 名下 7 枚原版 MyNFT 与剩余 ETH（卡33 第1组，体面退役）；私钥仅存于本机 .env 的 PRIVATE_KEY_4，不进日志/对话/截图",
+  "note": "only the address is recorded here; the private key lives exclusively in local .env as PRIVATE_KEY_4"
+}
